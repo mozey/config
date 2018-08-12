@@ -37,6 +37,10 @@ func (a *ArgMap) Set(value string) error {
 var Keys ArgMap
 var Values ArgMap
 
+func GetConfigPath() string {
+	return path.Join(AppDir, fmt.Sprintf("config.%v.json", *Env))
+}
+
 func Cmd() {
 	// If not compiled with ldflags see if AppDir is set on env
 	appDirKey := fmt.Sprintf("%v_DIR", Prefix)
@@ -44,23 +48,21 @@ func Cmd() {
 		AppDir = os.Getenv(appDirKey)
 	}
 
-	var config string
-	config = path.Join(AppDir, fmt.Sprintf("config.%v.json", *Env))
-
-	b, err := ioutil.ReadFile(config)
+	configPath := GetConfigPath()
+	b, err := ioutil.ReadFile(configPath)
 	if err != nil {
-		logutil.Debugf("Loading config from: %v", config)
+		logutil.Debugf("Loading configPath from: %v", configPath)
 		log.Panic(err)
 	}
 
-	// The config file must have a flat key value structure
+	// The configPath file must have a flat key value structure
 	c := ConfigMap{}
 	err = json.Unmarshal(b, &c)
 	if err != nil {
 		log.Panic(err)
 	}
 
-	// Set existing config Keys
+	// Set existing configPath Keys
 	var configKeys []string
 	for k := range c {
 		configKeys = append(configKeys, k)
@@ -74,7 +76,7 @@ func Cmd() {
 	}
 
 	if len(Keys) > 0 {
-		// Set config key value
+		// Set configPath key value
 
 		// Validate input
 		for i, key := range Keys {
@@ -91,11 +93,11 @@ func Cmd() {
 			c[key] = value
 		}
 
-		// Update config
+		// Update configPath
 		b, _ := json.MarshalIndent(c, "", "    ")
 		if *Update {
-			logutil.Debugf("Config updated: %v", config)
-			ioutil.WriteFile(config, b, 0)
+			logutil.Debugf("Config updated: %v", configPath)
+			ioutil.WriteFile(configPath, b, 0)
 		} else {
 			// Print json
 			fmt.Print(string(b))
