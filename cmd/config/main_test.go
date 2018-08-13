@@ -56,10 +56,10 @@ func TestPrintEnvCommands(t *testing.T) {
 	resetConfigFile("dev")
 	os.Setenv(fmt.Sprintf("%v_BAZ", Prefix), "123")
 	b := capturer.CaptureStdout(Cmd)
-	//fmt.Println(s)
 	s := string(b)
-	require.Contains(t, s, fmt.Sprintf("unset %v_BAZ", Prefix))
+	logutil.Debug("\n", s)
 	require.Contains(t, s, fmt.Sprintf("export %v_FOO=bar", Prefix))
+	require.Contains(t, s, fmt.Sprintf("unset %v_BAZ", Prefix))
 }
 
 func TestUpdateConfig(t *testing.T) {
@@ -78,6 +78,8 @@ func TestUpdateConfig(t *testing.T) {
 		logutil.Debugf("Unmarshal captured output: %v", string(b))
 		log.Panic(err)
 	}
+	s := string(b)
+	logutil.Debug("\n", s)
 	require.Equal(t, value1, c[key1])
 	require.Equal(t, value2, c[key2])
 
@@ -90,6 +92,8 @@ func TestUpdateConfig(t *testing.T) {
 		logutil.Debugf("Loading config from: %v", configPath)
 		log.Panic(err)
 	}
+	s = string(b)
+	logutil.Debug("\n", s)
 	require.Equal(t, value1, c[key1])
 	require.Equal(t, value2, c[key2])
 }

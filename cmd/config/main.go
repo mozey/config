@@ -15,6 +15,8 @@ import (
 
 type ConfigMap map[string]string
 
+type EnvKeys map[string]bool
+
 // AppDir is the application root
 var AppDir string
 // Prefix for env vars
@@ -104,20 +106,29 @@ func Cmd() {
 		}
 
 	} else {
-		// Unset env var starting with Prefix
+		// Create map of env vars starting with Prefix
+		envKeys := EnvKeys{}
 		for _, v := range os.Environ() {
 			a := strings.Split(v, "=")
 			if len(a) == 2 {
 				key := a[0]
-				//value := a[1]
 				if strings.HasPrefix(key, Prefix) {
-					fmt.Println(fmt.Sprintf("unset %v", key))
+					envKeys[a[0]] = true
 				}
 			}
 		}
+
 		// Print commands to set env
 		for _, key := range configKeys {
 			fmt.Println(fmt.Sprintf("export %v=%v", key, c[key]))
+			envKeys[key] = false
+		}
+
+		// Unset env vars not listed in the config file
+		for key, unset := range envKeys {
+			if unset {
+				fmt.Println(fmt.Sprintf("unset %v", key))
+			}
 		}
 	}
 }
