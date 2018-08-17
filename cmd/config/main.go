@@ -11,6 +11,9 @@ import (
 	"os"
 	"path"
 	"sort"
+	"bytes"
+	"text/template"
+	"unicode"
 )
 
 type ConfigMap map[string]string
@@ -25,6 +28,7 @@ var Prefix = "APP"
 // Flags
 var Env *string
 var Update *bool
+var Generate *string
 
 type ArgMap []string
 
@@ -41,6 +45,63 @@ var Values ArgMap
 
 func GetConfigPath() string {
 	return path.Join(AppDir, fmt.Sprintf("config.%v.json", *Env))
+}
+
+type TemplateKey struct {
+	KeyPrefix string
+	KeyPrivate string
+	Key string
+}
+
+type TemplateData struct {
+	Prefix string
+	Keys []TemplateKey
+}
+
+func ToPrivate(str string) string {
+	for i, v := range str {
+		return string(unicode.ToLower(v)) + str[i+1:]
+	}
+	return ""
+}
+
+func GenerateHelper(configKeys []string) {
+	// Create executable template
+	if Prefix != "APP" {
+		configTemplate = strings.Replace(configTemplate, "APP", Prefix, -1)
+	}
+	t := template.Must(template.New("configTemplate").Parse(configTemplate))
+
+	// Setup template data
+	data := TemplateData{
+		Prefix: Prefix,
+	}
+	for _, keyPrefix := range configKeys {
+		key := strings.Replace(
+			keyPrefix, fmt.Sprintf("%v_", Prefix), "", 1)
+		key = strings.Replace(key, "_", " ", -1)
+		key = strings.ToLower(key)
+		key = strings.Replace(strings.Title(key), " ", "", -1)
+		templateKey := TemplateKey{
+			KeyPrefix: keyPrefix,
+			KeyPrivate: ToPrivate(key),
+			Key: key,
+		}
+		data.Keys = append(data.Keys, templateKey)
+	}
+
+	// Execute the template
+	var buf bytes.Buffer
+	err := t.Execute(&buf, data)
+	if err != nil {
+		log.Panic(err)
+	}
+
+	err = ioutil.WriteFile(
+		path.Join(AppDir, *Generate, "config.go"), buf.Bytes(), 0644)
+	if err != nil {
+		log.Panic(err)
+	}
 }
 
 func Cmd() {
@@ -77,8 +138,13 @@ func Cmd() {
 		log.Panicf("Prefix must not be empty")
 	}
 
-	if len(Keys) > 0 {
-		// Set configPath key value
+	if *Generate != "" {
+		// Generate helper......................................................
+		GenerateHelper(configKeys)
+		return
+
+	} else if len(Keys) > 0 {
+		// Set keys.............................................................
 
 		// Validate input
 		for i, key := range Keys {
@@ -104,8 +170,11 @@ func Cmd() {
 			// Print json
 			fmt.Print(string(b))
 		}
+		return
 
 	} else {
+		// Print commands.......................................................
+
 		// Create map of env vars starting with Prefix
 		envKeys := EnvKeys{}
 		for _, v := range os.Environ() {
@@ -130,6 +199,7 @@ func Cmd() {
 				fmt.Println(fmt.Sprintf("unset %v", key))
 			}
 		}
+		return
 	}
 }
 
@@ -140,7 +210,83 @@ func main() {
 	flag.Var(&Keys, "key", "Set key and print config JSON")
 	flag.Var(&Values, "value", "Value for last key specified")
 	Update = flag.Bool("update", false, "Update config.json")
+	Generate = flag.String("gen", "", "Generate config helper at path")
 	flag.Parse()
 
 	Cmd()
 }
+
+// standard way to recognize machine-generated files
+// https://github.com/golang/go/issues/13560#issuecomment-276866852
+var configTemplate = `
+// Code generated with https://github.com/mozey/config DO NOT EDIT
+
+package config
+
+import (
+	"os"
+)
+
+// APP_TIMESTAMP
+var timestamp string 
+{{range .Keys}}
+// {{.KeyPrefix}}
+var {{.KeyPrivate}} string{{end}}
+
+
+type Config struct {
+	Timestamp string // APP_TIMESTAMP
+	{{range .Keys}}
+	{{.Key}} string // {{.KeyPrefix}}{{end}}
+}
+
+var conf *Config
+
+// New creates an instance of Config,
+// fields are set from private package vars or OS env.
+// For dev the config is read from env.
+// The prod build must be compiled with ldflags to set the package vars.
+// OS env vars will override ldflags if set.
+// Config fields correspond to the config file keys less the prefix.
+// Use https://github.com/mozey/config to manage the JSON config file
+func New() *Config {
+	var v string
+
+	v = os.Getenv("{{.Prefix}}_TIMESTAMP")
+	if v != "" {
+		timestamp = v
+	}
+
+	{{range .Keys}}
+	v = os.Getenv("{{.KeyPrefix}}")
+	if v != "" {
+		{{.KeyPrivate}} = v
+	}
+	{{end}}
+
+	conf = &Config{
+		Timestamp: timestamp,
+		{{range .Keys}}
+		{{.Key}}: {{.KeyPrivate}},{{end}}
+	}
+
+	return conf
+}
+
+// Refresh returns a new Config if the Timestamp has changed
+func Refresh() *Config {
+	if conf == nil {
+		// conf not initialised
+		return New()
+	}
+
+	timestamp = os.Getenv("APP_TIMESTAMP")
+	if conf.Timestamp != timestamp {
+		// Timestamp changed, reload config
+		return New()
+	}
+
+	// No change
+	return conf
+}
+`

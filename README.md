@@ -42,6 +42,12 @@ Unset env with `APP_` prefix not listed in config
     eval "$(./config)"
     printenv | sort | grep -E "APP_"
     
+Generate config helper
+
+    ./config -env prod  -gen internal/config
+    
+    go fmt ./internal/config/config.go
+    
     
 # Testing
 
