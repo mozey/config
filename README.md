@@ -42,9 +42,10 @@ Unset env with `APP_` prefix not listed in config
     eval "$(./config)"
     printenv | sort | grep -E "APP_"
     
-Generate config helper
+Generate config helper,
+keys in dev must be a subset of prod
 
-    ./config -env prod  -gen internal/config
+    ./config -env prod -gen internal/config
     
     go fmt ./internal/config/config.go
     
