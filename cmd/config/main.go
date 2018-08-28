@@ -55,6 +55,7 @@ type TemplateKey struct {
 
 type TemplateData struct {
 	Prefix string
+	SrcPath string
 	Keys []TemplateKey
 }
 
@@ -66,15 +67,17 @@ func ToPrivate(str string) string {
 }
 
 func GenerateHelper(configKeys []string) {
-	// Create executable template
+	// Create template
 	if Prefix != "APP" {
 		configTemplate = strings.Replace(configTemplate, "APP", Prefix, -1)
 	}
 	t := template.Must(template.New("configTemplate").Parse(configTemplate))
 
 	// Setup template data
+	srcPath := AppDir[strings.Index(AppDir, "/src"):]
 	data := TemplateData{
 		Prefix: Prefix,
+		SrcPath: srcPath,
 	}
 	for _, keyPrefix := range configKeys {
 		key := strings.Replace(
@@ -105,12 +108,6 @@ func GenerateHelper(configKeys []string) {
 }
 
 func Cmd() {
-	// If not compiled with ldflags see if AppDir is set on env
-	appDirKey := fmt.Sprintf("%v_DIR", Prefix)
-	if AppDir == "" {
-		AppDir = os.Getenv(appDirKey)
-	}
-
 	configPath := GetConfigPath()
 	b, err := ioutil.ReadFile(configPath)
 	if err != nil {
@@ -124,6 +121,10 @@ func Cmd() {
 	if err != nil {
 		log.Panic(err)
 	}
+
+	// AppDir value must be compiled with ldflags
+	appDirKey := fmt.Sprintf("%v_DIR", Prefix)
+	c[appDirKey] = AppDir
 
 	// Set existing configPath Keys
 	var configKeys []string
@@ -224,7 +225,11 @@ var configTemplate = `
 package config
 
 import (
+	"encoding/json"
+	"fmt"
+	"io/ioutil"
 	"os"
+	"path"
 )
 
 // APP_TIMESTAMP
@@ -288,5 +293,23 @@ func Refresh() *Config {
 
 	// No change
 	return conf
+}
+
+func LoadFile(mode string) (conf *Config, err error) {
+	p := fmt.Sprintf(path.Join(os.Getenv("GOPATH"),
+		"{{.SrcPath}}/config.%v.json"), mode)
+	b, err := ioutil.ReadFile(p)
+	if err != nil {
+		return nil, err
+	}
+	configMap := make(map[string]string)
+	err = json.Unmarshal(b, &configMap)
+	if err != nil {
+		return nil, err
+	}
+	for key, val := range configMap {
+		os.Setenv(key, val)
+	}
+	return Refresh(), nil
 }
 `

@@ -19,14 +19,14 @@ Compile
     -ldflags "-X main.AppDir=${APP_DIR}" \
     -o ${APP_DIR}/config ./cmd/config
     
-Create `config.json` and set a key
+Create `config.dev.json` and set a key
                         
     cd ${APP_DIR}
     
     touch config.dev.json
     
     ./config \
-    -key APP_DIR -value ${APP_DIR} \
+    -key APP_FOO -value bar \
     -update
     
     cat config.dev.json
@@ -34,16 +34,18 @@ Create `config.json` and set a key
 Set env from config
 
     eval "$(./config)"
-    export APP_FOO=unset_this
+    export APP_NOT_IN_CONFIG_FILE=undefined
     printenv | sort | grep -E "APP_"
     
-Unset env with `APP_` prefix not listed in config
+Unset env with `APP_` prefix that is not listed in the config file
     
     eval "$(./config)"
     printenv | sort | grep -E "APP_"
     
 Generate config helper,
 keys in dev must be a subset of prod
+
+    cp config.dev.json config.prod.json
 
     ./config -env prod -gen internal/config
     
