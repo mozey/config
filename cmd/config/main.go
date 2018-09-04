@@ -139,7 +139,7 @@ func Cmd() {
 		log.Panicf("Prefix must not be empty")
 	}
 
-	if Generate != nil {
+	if *Generate != "" {
 		// Generate helper......................................................
 		GenerateHelper(configKeys)
 		return

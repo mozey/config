@@ -47,6 +47,7 @@ func setFlags() {
 	goPath := os.Getenv("GOPATH")
 	AppDir = path.Join(goPath, "src", "github.com", "mozey", "config")
 	Prefix = randString(15)
+	Generate = new(string)
 	e := "dev"; Env = &e
 	u := false; Update = &u
 }
