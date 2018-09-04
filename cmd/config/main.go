@@ -111,7 +111,7 @@ func Cmd() {
 	configPath := GetConfigPath()
 	b, err := ioutil.ReadFile(configPath)
 	if err != nil {
-		logutil.Debugf("Loading configPath from: %v", configPath)
+		logutil.Debug("Loading configPath from: ", configPath)
 		log.Panic(err)
 	}
 
@@ -139,7 +139,7 @@ func Cmd() {
 		log.Panicf("Prefix must not be empty")
 	}
 
-	if *Generate != "" {
+	if Generate != nil {
 		// Generate helper......................................................
 		GenerateHelper(configKeys)
 		return
@@ -165,7 +165,7 @@ func Cmd() {
 		// Update configPath
 		b, _ := json.MarshalIndent(c, "", "    ")
 		if *Update {
-			logutil.Debugf("Config updated: %v", configPath)
+			logutil.Debug("Config updated: ", configPath)
 			ioutil.WriteFile(configPath, b, 0)
 		} else {
 			// Print json
@@ -232,35 +232,27 @@ import (
 	"path"
 )
 
-// APP_TIMESTAMP
-var timestamp string 
 {{range .Keys}}
 // {{.KeyPrefix}}
 var {{.KeyPrivate}} string{{end}}
 
 
+// Config fields correspond to config file keys less the prefix
 type Config struct {
-	Timestamp string // APP_TIMESTAMP
 	{{range .Keys}}
 	{{.Key}} string // {{.KeyPrefix}}{{end}}
 }
 
 var conf *Config
 
-// New creates an instance of Config,
-// fields are set from private package vars or OS env.
-// For dev the config is read from env.
-// The prod build must be compiled with ldflags to set the package vars.
-// OS env vars will override ldflags if set.
-// Config fields correspond to the config file keys less the prefix.
-// Use https://github.com/mozey/config to manage the JSON config file
+// New creates an instance of Config.
+// Read config from env for dev.
+// Build prod with ldflags to set the package vars.
+// Env will override ldflags.
+// Fields correspond to the config file keys less the prefix.
+// The config file must have a flat structure
 func New() *Config {
 	var v string
-
-	v = os.Getenv("{{.Prefix}}_TIMESTAMP")
-	if v != "" {
-		timestamp = v
-	}
 
 	{{range .Keys}}
 	v = os.Getenv("{{.KeyPrefix}}")
@@ -270,7 +262,6 @@ func New() *Config {
 	{{end}}
 
 	conf = &Config{
-		Timestamp: timestamp,
 		{{range .Keys}}
 		{{.Key}}: {{.KeyPrivate}},{{end}}
 	}
@@ -278,23 +269,7 @@ func New() *Config {
 	return conf
 }
 
-// Refresh returns a new Config if the Timestamp has changed
-func Refresh() *Config {
-	if conf == nil {
-		// conf not initialised
-		return New()
-	}
-
-	timestamp = os.Getenv("APP_TIMESTAMP")
-	if conf.Timestamp != timestamp {
-		// Timestamp changed, reload config
-		return New()
-	}
-
-	// No change
-	return conf
-}
-
+// LoadFile sets the env from file and returns a new instance of Config
 func LoadFile(mode string) (conf *Config, err error) {
 	p := fmt.Sprintf(path.Join(os.Getenv("GOPATH"),
 		"{{.SrcPath}}/config.%v.json"), mode)
@@ -310,6 +285,6 @@ func LoadFile(mode string) (conf *Config, err error) {
 	for key, val := range configMap {
 		os.Setenv(key, val)
 	}
-	return Refresh(), nil
+	return New(), nil
 }
 `

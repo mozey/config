@@ -98,4 +98,4 @@ func TestUpdateConfig(t *testing.T) {
 	require.Equal(t, value2, c[key2])
 }
 
-
+// TODO Test LoadFile
