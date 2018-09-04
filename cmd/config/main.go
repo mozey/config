@@ -243,30 +243,37 @@ type Config struct {
 	{{.Key}} string // {{.KeyPrefix}}{{end}}
 }
 
-var conf *Config
-
 // New creates an instance of Config.
-// Read config from env for dev.
-// Build prod with ldflags to set the package vars.
-// Env will override ldflags.
+// Build with ldflags to set the package vars.
+// Env overrides package vars.
 // Fields correspond to the config file keys less the prefix.
 // The config file must have a flat structure
 func New() *Config {
+	conf := &Config{}
+	SetVars(conf)
+	SetEnv(conf)
+	return conf
+}
+
+// SetVars sets non-empty package vars on Config
+func SetVars(conf *Config) {
+	{{range .Keys}}
+	if {{.KeyPrivate}} != "" {
+		conf.{{.Key}} = {{.KeyPrivate}}
+	}
+	{{end}}
+}
+
+// SetEnv sets non-empty env vars on Config
+func SetEnv(conf *Config) {
 	var v string
 
 	{{range .Keys}}
 	v = os.Getenv("{{.KeyPrefix}}")
 	if v != "" {
-		{{.KeyPrivate}} = v
+		conf.{{.Key}} = v
 	}
 	{{end}}
-
-	conf = &Config{
-		{{range .Keys}}
-		{{.Key}}: {{.KeyPrivate}},{{end}}
-	}
-
-	return conf
 }
 
 // LoadFile sets the env from file and returns a new instance of Config
