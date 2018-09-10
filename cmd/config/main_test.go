@@ -1,22 +1,28 @@
 package main
 
 import (
-	"testing"
+	"encoding/json"
+	"fmt"
+	"github.com/mozey/logutil"
+	"github.com/stretchr/testify/require"
+	"io/ioutil"
 	"log"
+	"math/rand"
 	"os"
 	"path"
-	"fmt"
-	"io/ioutil"
-	"github.com/mozey/logutil"
-	"math/rand"
+	"testing"
 	"time"
-	"github.com/mozey/go-capturer"
-	"github.com/stretchr/testify/require"
-	"encoding/json"
 )
+
+func init() {
+	// Setup logging
+	log.SetFlags(log.Ldate | log.Ltime | log.LUTC | log.Lshortfile)
+	logutil.SetDebug(true)
+}
 
 // https://stackoverflow.com/a/22892986/639133
 var letters = []rune("ABCDEFGHIJKLMNOPQRSTUVWXYZ")
+
 func randString(n int) string {
 	rand.Seed(time.Now().UnixNano())
 	b := make([]rune, n)
@@ -26,77 +32,150 @@ func randString(n int) string {
 	return string(b)
 }
 
-var key1 string
-var value1 string
-var configJson string
-func resetConfigFile(env string) {
-	var config string
-	config = path.Join(AppDir, fmt.Sprintf("config.%v.json", env))
-	key1 = fmt.Sprintf("%v_FOO", Prefix)
-	value1 = "bar"
-	configJson = fmt.Sprintf("{\"%v\":\"%v\"}", key1, value1)
-	data := []byte(configJson)
-	err := ioutil.WriteFile(config, data, 0644)
-	if err != nil {
-		logutil.Debugf("Loading config from: %v", config)
-		log.Panic(err)
-	}
+func TestGetPath(t *testing.T) {
+	appDir := randString(8)
+	_, err := GetPath(appDir, "")
+	require.Error(t, err, "assumed path does not exist ", appDir)
+
+	appDir = "/"
+	env := "foo"
+	p, err := GetPath(appDir, env)
+	require.NoError(t, err)
+	require.Equal(t, path.Join(appDir, fmt.Sprintf("config.%v.json", env)), p)
 }
 
-func setFlags() {
-	goPath := os.Getenv("GOPATH")
-	AppDir = path.Join(goPath, "src", "github.com", "mozey", "config")
-	Prefix = randString(15)
-	Generate = new(string)
-	e := "dev"; Env = &e
-	u := false; Update = &u
+func TestCompareKeys(t *testing.T) {
+	tmp, err := ioutil.TempDir("", "mozey-config")
+	require.NoError(t, err)
+	defer os.RemoveAll(tmp)
+
+	env := "dev"
+	compare := "prod"
+
+	ioutil.WriteFile(
+		path.Join(tmp, fmt.Sprintf("config.%v.json", env)),
+		[]byte(`{"APP_ONE": "1", "APP_FOO": "foo"}`),
+		0644)
+	ioutil.WriteFile(
+		path.Join(tmp, fmt.Sprintf("config.%v.json", compare)),
+		[]byte(`{"APP_BAR": "bar", "APP_ONE": "1"}`),
+		0644)
+
+	in := &CmdIn{}
+	in.AppDir = tmp
+	prefix := "APP"
+	in.Prefix = &prefix
+	in.Env = &env
+	in.Compare = &compare
+	in.Config, err = NewConfig(in.AppDir, *in.Env, *in.Prefix)
+	require.NoError(t, err)
+
+	out, err := Cmd(in)
+	require.NoError(t, err)
+	require.Equal(t, "compare", out.Cmd)
+	require.Equal(t, 1, out.ExitCode)
+	require.Equal(t, "APP_BAR\nAPP_FOO\n", out.Buf.String())
 }
 
-func TestPrintEnvCommands(t *testing.T) {
-	setFlags()
-	resetConfigFile("dev")
-	os.Setenv(fmt.Sprintf("%v_BAZ", Prefix), "123")
-	b := capturer.CaptureStdout(Cmd)
-	s := string(b)
-	logutil.Debug("\n", s)
-	require.Contains(t, s, fmt.Sprintf("export %v_FOO=bar", Prefix))
-	require.Contains(t, s, fmt.Sprintf("unset %v_BAZ", Prefix))
+func TestGenerateHelper(t *testing.T) {
+	tmp, err := ioutil.TempDir("", "mozey-config")
+	require.NoError(t, err)
+	defer os.RemoveAll(tmp)
+
+	env := "dev"
+	prefix := "APP"
+
+	appDir := path.Join(tmp, "src", "app")
+	os.MkdirAll(appDir, os.ModePerm)
+	err = ioutil.WriteFile(
+		path.Join(appDir, fmt.Sprintf("config.%v.json", env)),
+		[]byte(`{"APP_FOO": "foo", "APP_BAR": "bar"}`),
+		0644)
+	require.NoError(t, err)
+
+	in := &CmdIn{}
+	in.AppDir = appDir
+	in.Prefix = &prefix
+	in.Env = &env
+	in.Compare = new(string)
+	generate := "src/app"
+	in.Generate = &generate
+	in.Config, err = NewConfig(in.AppDir, *in.Env, *in.Prefix)
+	require.NoError(t, err)
+
+	out, err := Cmd(in)
+	require.NoError(t, err)
+	require.Equal(t, "generate", out.Cmd)
+	require.Equal(t, 0, out.ExitCode)
+	logutil.Debug(out.Buf.String())
+	// TODO Validate generated code
 }
 
 func TestUpdateConfig(t *testing.T) {
-	setFlags()
-	resetConfigFile("dev")
-	key2 := fmt.Sprintf("%v_BAZ", Prefix)
-	Keys.Set(key2)
-	value2 := "456"
-	Values.Set(value2)
+	tmp, err := ioutil.TempDir("", "mozey-config")
+	require.NoError(t, err)
+	defer os.RemoveAll(tmp)
 
-	// Prints new config if update is not set
-	b := capturer.CaptureStdout(Cmd)
-	c := ConfigMap{}
-	err := json.Unmarshal(b, &c)
-	if err != nil {
-		logutil.Debugf("Unmarshal captured output: %v", string(b))
-		log.Panic(err)
-	}
-	s := string(b)
-	logutil.Debug("\n", s)
-	require.Equal(t, value1, c[key1])
-	require.Equal(t, value2, c[key2])
+	env := "dev"
 
-	// Check config file is updated
-	u := true; Update = &u
-	Cmd()
-	configPath := GetConfigPath()
-	b, err = ioutil.ReadFile(configPath)
-	if err != nil {
-		logutil.Debugf("Loading config from: %v", configPath)
-		log.Panic(err)
-	}
-	s = string(b)
-	logutil.Debug("\n", s)
-	require.Equal(t, value1, c[key1])
-	require.Equal(t, value2, c[key2])
+	err = ioutil.WriteFile(
+		path.Join(tmp, fmt.Sprintf("config.%v.json", env)),
+		[]byte(`{"APP_FOO": "foo", "APP_BAR": "bar"}`),
+		0644)
+
+	in := &CmdIn{}
+	in.AppDir = tmp
+	prefix := "APP"
+	in.Prefix = &prefix
+	in.Env = &env
+	keys := ArgMap{"APP_FOO", "APP_BAR"}
+	values := ArgMap{"update 1", "update 2"}
+	in.Keys = &keys
+	in.Values = &values
+	in.Compare = new(string)
+	in.Generate = new(string)
+	in.Config, err = NewConfig(in.AppDir, *in.Env, *in.Prefix)
+	require.NoError(t, err)
+
+	out, err := Cmd(in)
+	require.NoError(t, err)
+	require.Equal(t, "update_config", out.Cmd)
+	require.Equal(t, 0, out.ExitCode)
+	logutil.Debug(out.Buf.String())
+
+	m := make(map[string]string)
+	err = json.Unmarshal(out.Buf.Bytes(), &m)
+	require.NoError(t, err)
+	require.Equal(t, "update 1", m["APP_FOO"])
+	require.Equal(t, "update 2", m["APP_BAR"])
 }
 
-// TODO Test LoadFile
+func TestSetEnv(t *testing.T) {
+	tmp, err := ioutil.TempDir("", "mozey-config")
+	require.NoError(t, err)
+	defer os.RemoveAll(tmp)
+
+	env := "dev"
+
+	err = ioutil.WriteFile(
+		path.Join(tmp, fmt.Sprintf("config.%v.json", env)),
+		[]byte(`{"APP_BAR": "bar"}`),
+		0644)
+
+	os.Setenv("APP_FOO", "foo")
+
+	in := &CmdIn{}
+	in.AppDir = tmp
+	prefix := "APP"
+	in.Prefix = &prefix
+	in.Env = &env
+	in.Config, err = NewConfig(in.AppDir, *in.Env, *in.Prefix)
+	require.NoError(t, err)
+
+	buf, err := SetEnv(in)
+	require.NoError(t, err)
+	s := buf.String()
+	require.Contains(t, s, "export APP_BAR=bar\n")
+	require.Contains(t, s, "export APP_DIR=")
+	require.Contains(t, s, "unset APP_FOO\n")
+}

@@ -1,0 +1,5 @@
+{
+    "APP_DEBUG": "true",
+    "APP_BAR": "bar",
+    "APP_FOO": "foo"
+}

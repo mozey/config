@@ -9,11 +9,11 @@ Manage env vars with a config.json file
 
 Set `APP_DIR`, change command below to use your project path
 
-    export APP_DIR=${GOPATH}/src/github.com/mozey/gateway
+    export APP_DIR=${GOPATH}/src/github.com/mozey/config
 
 Compile
 
-    cd ${GOPATH}/src/github.com/mozey/config
+    cd ${APP_DIR}
 
     go build \
     -ldflags "-X main.AppDir=${APP_DIR}" \
@@ -23,33 +23,24 @@ Create `config.dev.json` and set a key
                         
     cd ${APP_DIR}
     
-    touch config.dev.json
+    cp config.dev.sample.json config.dev.json
     
-    ./config \
-    -key APP_FOO -value bar \
-    -update
+    ./config -key APP_FOO -value xxx
     
     cat config.dev.json
     
 Set env from config
 
-    eval "$(./config)"
     export APP_NOT_IN_CONFIG_FILE=undefined
-    printenv | sort | grep -E "APP_"
     
-Unset env with `APP_` prefix that is not listed in the config file
-    
+    # Print commands
+    ./config
+
+    # Set env    
     eval "$(./config)"
+    
+    # Print env
     printenv | sort | grep -E "APP_"
-    
-Generate config helper,
-keys in dev must be a subset of prod
-
-    cp config.dev.json config.prod.json
-
-    ./config -env prod -gen internal/config
-    
-    go fmt ./internal/config/config.go
     
     
 # Testing
@@ -57,31 +48,54 @@ keys in dev must be a subset of prod
     cd ${GOPATH}/src/github.com/mozey/config
 
     export APP_DEBUG=true
-    gotest -v ./cmd/config/... -run TestPrintEnvCommands
+    gotest -v ./...
     
-    gotest ./cmd/config/...
+Debug
+
+    go run -ldflags "-X main.AppDir=${APP_DIR}" cmd/config/main.go
     
     
 # Prod env
 
-Create `config.json` and set a key
+Create `config.prod.json` and set a key
 
-    cd ${APP_DIR}
+    cp config.prod.sample.json config.prod.json
     
-    touch config.prod.json
-    
-    ./config -env prod \
-    -key APP_PROD -value true \
-    -update
+    ./config -env prod -key APP_BEER -value pilsner
     
     cat config.prod.json
     
+All config files must have the same keys,
+if a key does not apply set the value to an empty string.
+Compare config files and print un-matched keys
+
+    ./config -env dev -compare prod
+    
+    # Config exits with error code if the keys don't match
+    echo $?
+
+
+# Generate config helper
+
+    mkdir -p internal/config
+    
+    ./config -env prod -generate internal/config
+    
+    go fmt ./internal/config/config.go
+
+
+# Dry run
+
+For commands that update files,
+use the `-dry-run` flag to print the result and skip the update
+
 
 # Aliases
 
-Create aliases to toggle between env
+Use aliases to quickly toggle between env and print the current env.
+For example
 
-    alias dev='eval "$(./config)" && printenv | sort | grep -E "APP_|"'
-    alias prod='eval "$(./config -env prod)" && printenv | sort | grep -E "APP_|"'
+    alias dev='eval "$(./config)" && printenv | sort | grep -E "APP_|AWS_"'
+    alias prod='eval "$(./config -env prod)" && printenv | sort | grep -E "APP_|AWS_"'
 
 
