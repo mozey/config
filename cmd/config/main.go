@@ -207,7 +207,7 @@ func GenerateHelper(in *CmdIn) (buf *bytes.Buffer, err error) {
 	}
 	for _, keyPrefix := range in.Config.Keys {
 		key := strings.Replace(
-			keyPrefix, fmt.Sprintf("%v_", in.Prefix), "", 1)
+			keyPrefix, fmt.Sprintf("%v_", *in.Prefix), "", 1)
 		key = strings.Replace(key, "_", " ", -1)
 		key = strings.ToLower(key)
 		key = strings.Replace(strings.Title(key), " ", "", -1)

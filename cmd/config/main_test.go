@@ -10,6 +10,7 @@ import (
 	"math/rand"
 	"os"
 	"path"
+	"strings"
 	"testing"
 	"time"
 )
@@ -107,8 +108,20 @@ func TestGenerateHelper(t *testing.T) {
 	require.NoError(t, err)
 	require.Equal(t, "generate", out.Cmd)
 	require.Equal(t, 0, out.ExitCode)
-	logutil.Debug(out.Buf.String())
-	// TODO Validate generated code
+	generated := out.Buf.String()
+	logutil.Debug(generated)
+
+	// Validate generated code
+	// https://dave.cheney.net/2016/05/10/test-fixtures-in-go
+	b, err := ioutil.ReadFile("testdata/config.go")
+	generated = strings.Replace(generated, " ", "", -1)
+	generated = strings.Replace(generated, "\t", "", -1)
+	generated = strings.Replace(generated, "\n", "", -1)
+	ref := string(b)
+	ref = strings.Replace(ref, " ", "", -1)
+	ref = strings.Replace(ref, "\t", "", -1)
+	ref = strings.Replace(ref, "\n", "", -1)
+	require.Equal(t, ref, generated)
 }
 
 func TestUpdateConfig(t *testing.T) {
