@@ -60,6 +60,7 @@ type CmdIn struct {
 	Generate *string
 	// Config file for Env
 	Config *Config
+	CSV *bool
 	DryRun *bool
 }
 
@@ -304,11 +305,45 @@ func SetEnv(in *CmdIn) (buf *bytes.Buffer, err error) {
 	return buf, nil
 }
 
+func CSV(in *CmdIn) (buf *bytes.Buffer, err error) {
+	buf = new(bytes.Buffer)
+
+	a := make([]string, len(in.Config.Keys))
+	for i, key := range in.Config.Keys {
+		value := in.Config.Map[key]
+		if strings.Contains(value, "\n") {
+			return buf, fmt.Errorf("values must not contain newlines")
+		}
+		if strings.Contains(value, ",") {
+			return buf, fmt.Errorf("values must not contain commas")
+		}
+		a[i] = fmt.Sprintf("%v=%v", key, value)
+	}
+
+	// Do not use encoding/csv, the writer will append a newline
+	_, err = buf.WriteString(strings.Join(a, ","))
+	if err != nil {
+		return buf, err
+	}
+
+	return buf, nil
+}
+
 func Cmd(in *CmdIn) (out *CmdOut, err error) {
 	out = &CmdOut{}
 
-	// Compare keys
-	if *in.Compare != "" {
+	if *in.CSV {
+		// Get env CSV
+		buf, err := CSV(in)
+		if err != nil {
+			return out, err
+		}
+		out.Cmd = "csv"
+		out.Buf = buf
+		return out, nil
+
+	} else if *in.Compare != "" {
+		// Compare keys
 		buf, err := CompareKeys(in)
 		if err != nil {
 			return out, err
@@ -369,6 +404,8 @@ func main() {
 	flag.Var(in.Values, "value", "Value for last key specified")
 	// Default must be empty
 	in.Generate = flag.String("generate", "", "Generate config helper at path")
+	in.CSV = flag.Bool(
+		"csv", false, "Print env key=value CSV")
 	in.DryRun = flag.Bool(
 		"dry-run", false, "Don't write files, just print result")
 	flag.Parse()
@@ -427,6 +464,10 @@ func main() {
 		os.Exit(out.ExitCode)
 
 	case "compare":
+		fmt.Print(out.Buf.String())
+		os.Exit(out.ExitCode)
+
+	case "csv":
 		fmt.Print(out.Buf.String())
 		os.Exit(out.ExitCode)
 	}

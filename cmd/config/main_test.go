@@ -192,3 +192,36 @@ func TestSetEnv(t *testing.T) {
 	require.Contains(t, s, "export APP_DIR=")
 	require.Contains(t, s, "unset APP_FOO\n")
 }
+
+func TestCSV(t *testing.T) {
+	tmp, err := ioutil.TempDir("", "mozey-config")
+	require.NoError(t, err)
+	defer os.RemoveAll(tmp)
+
+	env := "dev"
+
+	err = ioutil.WriteFile(
+		path.Join(tmp, fmt.Sprintf("config.%v.json", env)),
+		[]byte(`{"APP_FOO": "foo", "APP_BAR": "bar"}`),
+		0644)
+
+	in := &CmdIn{}
+	in.AppDir = tmp
+	prefix := "APP"
+	in.Prefix = &prefix
+	in.Env = &env
+	in.Compare = new(string)
+	in.Generate = new(string)
+	in.Config, err = NewConfig(in.AppDir, *in.Env, *in.Prefix)
+	csv := true
+	in.CSV = &csv
+	require.NoError(t, err)
+
+	out, err := Cmd(in)
+	require.NoError(t, err)
+	require.Equal(t, "csv", out.Cmd)
+	require.Equal(t, 0, out.ExitCode)
+
+	e := fmt.Sprintf("APP_BAR=bar,APP_DIR=%v,APP_FOO=foo", in.AppDir)
+	require.Equal(t, e, out.Buf.String())
+}
