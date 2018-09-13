@@ -496,8 +496,14 @@ var {{.KeyPrivate}} string{{end}}
 // Config fields correspond to config file keys less the prefix
 type Config struct {
 	{{range .Keys}}
-	{{.Key}} string // {{.KeyPrefix}}{{end}}
+	{{.KeyPrivate}} string // {{.KeyPrefix}}{{end}}
 }
+
+{{range .Keys}}
+// {{.Key}} is {{.KeyPrefix}}
+func (c *Config) {{.Key}}() string {
+	return c.{{.KeyPrivate}}
+}{{end}}
 
 // New creates an instance of Config.
 // Build with ldflags to set the package vars.
@@ -515,7 +521,7 @@ func New() *Config {
 func SetVars(conf *Config) {
 	{{range .Keys}}
 	if {{.KeyPrivate}} != "" {
-		conf.{{.Key}} = {{.KeyPrivate}}
+		conf.{{.KeyPrivate}} = {{.KeyPrivate}}
 	}
 	{{end}}
 }
@@ -527,7 +533,7 @@ func SetEnv(conf *Config) {
 	{{range .Keys}}
 	v = os.Getenv("{{.KeyPrefix}}")
 	if v != "" {
-		conf.{{.Key}} = v
+		conf.{{.KeyPrivate}} = v
 	}
 	{{end}}
 }

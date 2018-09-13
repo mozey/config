@@ -3,6 +3,7 @@ package main
 import (
 	"encoding/json"
 	"fmt"
+	"github.com/mozey/config/cmd/config/testdata"
 	"github.com/mozey/logutil"
 	"github.com/stretchr/testify/require"
 	"io/ioutil"
@@ -70,6 +71,8 @@ func TestCompareKeys(t *testing.T) {
 	in.Compare = &compare
 	in.Config, err = NewConfig(in.AppDir, *in.Env, *in.Prefix)
 	require.NoError(t, err)
+	csv := false
+	in.CSV = &csv
 
 	out, err := Cmd(in)
 	require.NoError(t, err)
@@ -79,30 +82,24 @@ func TestCompareKeys(t *testing.T) {
 }
 
 func TestGenerateHelper(t *testing.T) {
-	tmp, err := ioutil.TempDir("", "mozey-config")
-	require.NoError(t, err)
-	defer os.RemoveAll(tmp)
+	var err error
 
 	env := "dev"
 	prefix := "APP"
-
-	appDir := path.Join(tmp, "src", "app")
-	os.MkdirAll(appDir, os.ModePerm)
-	err = ioutil.WriteFile(
-		path.Join(appDir, fmt.Sprintf("config.%v.json", env)),
-		[]byte(`{"APP_FOO": "foo", "APP_BAR": "bar"}`),
-		0644)
-	require.NoError(t, err)
+	generate := path.Join("x",
+		"src", "github.com", "mozey", "config", "cmd", "config", "testdata")
+	appDir := path.Join(generate)
 
 	in := &CmdIn{}
 	in.AppDir = appDir
 	in.Prefix = &prefix
 	in.Env = &env
 	in.Compare = new(string)
-	generate := "src/app"
 	in.Generate = &generate
-	in.Config, err = NewConfig(in.AppDir, *in.Env, *in.Prefix)
+	in.Config, err = NewConfig("testdata", *in.Env, *in.Prefix)
 	require.NoError(t, err)
+	csv := false
+	in.CSV = &csv
 
 	out, err := Cmd(in)
 	require.NoError(t, err)
@@ -122,6 +119,11 @@ func TestGenerateHelper(t *testing.T) {
 	ref = strings.Replace(ref, "\t", "", -1)
 	ref = strings.Replace(ref, "\n", "", -1)
 	require.Equal(t, ref, generated)
+
+	c, err := config.LoadFile("dev")
+	require.NoError(t, err)
+	require.Equal(t, "foo", c.Foo())
+	require.Equal(t, "bar", c.Bar())
 }
 
 func TestUpdateConfig(t *testing.T) {
@@ -149,6 +151,8 @@ func TestUpdateConfig(t *testing.T) {
 	in.Generate = new(string)
 	in.Config, err = NewConfig(in.AppDir, *in.Env, *in.Prefix)
 	require.NoError(t, err)
+	csv := false
+	in.CSV = &csv
 
 	out, err := Cmd(in)
 	require.NoError(t, err)
@@ -184,6 +188,8 @@ func TestSetEnv(t *testing.T) {
 	in.Env = &env
 	in.Config, err = NewConfig(in.AppDir, *in.Env, *in.Prefix)
 	require.NoError(t, err)
+	csv := false
+	in.CSV = &csv
 
 	buf, err := SetEnv(in)
 	require.NoError(t, err)

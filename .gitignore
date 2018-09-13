@@ -12,8 +12,13 @@
 *.out
 
 config
+!config/
+
 config.dev.json
 config.prod.json
+!cmd/config/testdata/config.dev.json
 
 _excluded
+
+# README example generates config helper in internal
 internal
