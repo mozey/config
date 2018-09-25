@@ -99,3 +99,9 @@ For example
     alias prod='eval "$(./config -env prod)" && printenv | sort | grep -E "APP_|AWS_"'
 
 
+# Viper 
+
+TODO can [spf13/viper](https://github.com/spf13/viper)
+be used to replace this package.
+How would the config helper be generated?
+
