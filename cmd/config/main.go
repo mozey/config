@@ -126,10 +126,12 @@ func NewConfig(appDir string, env string, prefix string) (c *Config, err error) 
 	}
 	appDirKey := fmt.Sprintf("%v_DIR", prefix)
 	if _, ok := c.Map[appDirKey]; ok {
-		// app dir set in config,
-		// confirm match to prevent accidentally using wrong config file
-		if appDir != c.Map[appDirKey] {
-			return c, fmt.Errorf("app dir does not match config file")
+		if c.Map[appDirKey] != "" {
+			// app dir set in config,
+			// confirm match to prevent accidentally using wrong config file
+			if appDir != c.Map[appDirKey] {
+				return c, fmt.Errorf("app dir does not match config file")
+			}
 		}
 	} else {
 		// app dir not set in config file,
