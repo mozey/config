@@ -4,10 +4,9 @@ import (
 	"encoding/json"
 	"fmt"
 	"github.com/mozey/config/cmd/config/testdata"
-	"github.com/mozey/logutil"
+	"github.com/rs/zerolog/log"
 	"github.com/stretchr/testify/require"
 	"io/ioutil"
-	"log"
 	"math/rand"
 	"os"
 	"path"
@@ -17,9 +16,6 @@ import (
 )
 
 func init() {
-	// Setup logging
-	log.SetFlags(log.Ldate | log.Ltime | log.LUTC | log.Lshortfile)
-	logutil.SetDebug(true)
 }
 
 // https://stackoverflow.com/a/22892986/639133
@@ -106,7 +102,7 @@ func TestGenerateHelper(t *testing.T) {
 	require.Equal(t, "generate", out.Cmd)
 	require.Equal(t, 0, out.ExitCode)
 	generated := out.Buf.String()
-	logutil.Debug(generated)
+	log.Debug().Msg(generated)
 
 	// Validate generated code
 	// https://dave.cheney.net/2016/05/10/test-fixtures-in-go
@@ -158,7 +154,7 @@ func TestUpdateConfig(t *testing.T) {
 	require.NoError(t, err)
 	require.Equal(t, "update_config", out.Cmd)
 	require.Equal(t, 0, out.ExitCode)
-	logutil.Debug(out.Buf.String())
+	log.Debug().Msg(out.Buf.String())
 
 	m := make(map[string]string)
 	err = json.Unmarshal(out.Buf.Bytes(), &m)
