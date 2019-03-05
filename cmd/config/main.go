@@ -5,10 +5,9 @@ import (
 	"encoding/json"
 	"flag"
 	"fmt"
-	"github.com/mozey/logutil"
+	"github.com/rs/zerolog/log"
 	"io"
 	"io/ioutil"
-	"log"
 	"os"
 	"path"
 	"sort"
@@ -60,7 +59,7 @@ type CmdIn struct {
 	Generate *string
 	// Config file for Env
 	Config *Config
-	CSV *bool
+	CSV    *bool
 	DryRun *bool
 }
 
@@ -106,7 +105,7 @@ func NewConfig(appDir string, env string, prefix string) (c *Config, err error) 
 	}
 	b, err := ioutil.ReadFile(configPath)
 	if err != nil {
-		logutil.Debug("reading config at path ", configPath)
+		log.Debug().Msgf("reading config at path %v", configPath)
 		return c, err
 	}
 
@@ -116,7 +115,7 @@ func NewConfig(appDir string, env string, prefix string) (c *Config, err error) 
 	// The config file must have a flat key value structure
 	err = json.Unmarshal(b, &c.Map)
 	if err != nil {
-		logutil.Debug("unmarshal config at path ", configPath)
+		log.Debug().Msgf("unmarshal config at path %v", configPath)
 		return c, err
 	}
 
@@ -227,7 +226,7 @@ func GenerateHelper(in *CmdIn) (buf *bytes.Buffer, err error) {
 	err = t.Execute(buf, &data)
 	if err != nil {
 		b, _ := json.MarshalIndent(data, "", "    ")
-		logutil.Debug("template data \n", string(b))
+		fmt.Printf("template data \n %v", string(b))
 		return buf, err
 	}
 
@@ -257,7 +256,7 @@ func UpdateConfig(in *CmdIn) (buf *bytes.Buffer, err error) {
 		value := values[i]
 
 		// Update key value pairs
-		logutil.Debugf("Config %v %v=%v", *in.Env, key, value)
+		log.Debug().Msgf("Config %v %v=%v", *in.Env, key, value)
 		m[key] = value
 		RefreshKeys(in.Config)
 	}
@@ -389,8 +388,6 @@ func Cmd(in *CmdIn) (out *CmdOut, err error) {
 }
 
 func main() {
-	log.SetFlags(log.Ldate | log.Ltime | log.LUTC | log.Lshortfile)
-
 	in := CmdIn{}
 
 	in.AppDir = AppDir
@@ -415,16 +412,16 @@ func main() {
 	// Set config
 	config, err := NewConfig(in.AppDir, *in.Env, *in.Prefix)
 	if err != nil {
-		logutil.Debug("AppDir ", in.AppDir)
-		logutil.Debug("Env ", *in.Env)
-		logutil.Panic(err)
+		log.Debug().Msgf("AppDir %v", in.AppDir)
+		log.Debug().Msgf("Env %v", *in.Env)
+		panic(err)
 	}
 	in.Config = config
 
 	// Run command
 	out, err := Cmd(&in)
 	if err != nil {
-		logutil.Panic(err)
+		panic(err)
 	}
 
 	switch out.Cmd {
@@ -440,12 +437,12 @@ func main() {
 		} else {
 			configPath, err := GetPath(in.AppDir, *in.Env)
 			if err != nil {
-				logutil.Panic(err)
+				panic(err)
 			}
 			// Update config file
 			err = ioutil.WriteFile(configPath, out.Buf.Bytes(), 0)
 			if err != nil {
-				logutil.Panic(err)
+				panic(err)
 			}
 		}
 		os.Exit(out.ExitCode)
@@ -460,7 +457,7 @@ func main() {
 				out.Buf.Bytes(),
 				0644)
 			if err != nil {
-				logutil.Panic(err)
+				panic(err)
 			}
 		}
 		os.Exit(out.ExitCode)
