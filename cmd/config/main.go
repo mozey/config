@@ -504,6 +504,13 @@ func (c *Config) {{.Key}}() string {
 	return c.{{.KeyPrivate}}
 }{{end}}
 
+{{range .Keys}}
+// Set{{.Key}} overrides the value of {{.KeyPrivate}}
+func (c *Config) Set{{.Key}}(v string) {
+	c.{{.KeyPrivate}} = v
+}
+{{end}}
+
 // New creates an instance of Config.
 // Build with ldflags to set the package vars.
 // Env overrides package vars.
