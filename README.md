@@ -90,18 +90,47 @@ For commands that update files,
 use the `-dry-run` flag to print the result and skip the update
 
 
-# Aliases
+# Helper func to toggle env
 
-Use aliases to quickly toggle between env and print the current env.
-For example
+Add func below to bash profile
 
-    alias dev='eval "$(./config)" && printenv | sort | grep -E "APP_|AWS_"'
-    alias prod='eval "$(./config -env prod)" && printenv | sort | grep -E "APP_|AWS_"'
+    # Helper func to toggle env with github/mozey/config
+    conf() {
+        local ENV=${1}
+        if [[ -z "${ENV}" ]]; then
+            local ENV="dev"
+        fi
+    
+        if ! test -f "./config"; then
+            echo "config cmd not found"
+            return 1
+        fi
+    
+        if test -f "./config.${ENV}.json"; then
+            eval "$(./config -env ${ENV})"
+            # Checking retVal with $? won't work here
+            printenv | sort | grep -E "APP_|AWS_"
+        else
+            echo "config file not found"
+            return 1
+        fi
+    }
+    
+Then use it to toggle env
 
+    conf 
+    
+    conf prod
+    
+    conf stage
+    
 
-# Viper 
+# TODO [Viper](https://github.com/spf13/viper) 
 
-TODO can [spf13/viper](https://github.com/spf13/viper)
-be used to replace this package.
+Does it make sense to build this on top of or use Viper instead?
+
 How would the config helper be generated?
+
+Keep in mind that env must be set in the parent process
+
 
