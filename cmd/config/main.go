@@ -183,7 +183,7 @@ type TemplateKey struct {
 
 type TemplateData struct {
 	Prefix  string
-	SrcPath string
+	AppDir string
 	Keys    []TemplateKey
 }
 
@@ -202,10 +202,9 @@ func GenerateHelper(in *CmdIn) (buf *bytes.Buffer, err error) {
 	t := template.Must(template.New("configTemplate").Parse(configTemplate))
 
 	// Setup template data
-	srcPath := in.AppDir[strings.Index(in.AppDir, "/src"):]
 	data := TemplateData{
 		Prefix:  *in.Prefix,
-		SrcPath: srcPath,
+		AppDir: in.AppDir,
 	}
 	for _, keyPrefix := range in.Config.Keys {
 		key := strings.Replace(
@@ -546,8 +545,7 @@ func SetEnv(conf *Config) {
 
 // LoadFile sets the env from file and returns a new instance of Config
 func LoadFile(mode string) (conf *Config, err error) {
-	p := fmt.Sprintf(path.Join(os.Getenv("GOPATH"),
-		"{{.SrcPath}}/config.%v.json"), mode)
+	p := fmt.Sprintf("{{.AppDir}}/config.%v.json", mode)
 	b, err := ioutil.ReadFile(p)
 	if err != nil {
 		return nil, err
