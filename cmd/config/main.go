@@ -483,7 +483,6 @@ import (
 	"fmt"
 	"io/ioutil"
 	"os"
-	"path"
 )
 
 {{range .Keys}}
