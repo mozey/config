@@ -544,7 +544,8 @@ func SetEnv(conf *Config) {
 
 // LoadFile sets the env from file and returns a new instance of Config
 func LoadFile(mode string) (conf *Config, err error) {
-	p := fmt.Sprintf("{{.AppDir}}/config.%v.json", mode)
+	appDir := os.Getenv("APP_DIR")
+	p := fmt.Sprintf("%v/config.%v.json", appDir, mode)
 	b, err := ioutil.ReadFile(p)
 	if err != nil {
 		return nil, err
@@ -555,7 +556,7 @@ func LoadFile(mode string) (conf *Config, err error) {
 		return nil, err
 	}
 	for key, val := range configMap {
-		os.Setenv(key, val)
+		_ = os.Setenv(key, val)
 	}
 	return New(), nil
 }
