@@ -1,3 +1,5 @@
+.idea
+
 # Binaries for programs and plugins
 *.exe
 *.exe~
@@ -20,5 +22,5 @@ config.prod.json
 
 _excluded
 
-# README example generates config helper in internal
-internal
+# README example generates config helper here:
+pkg/config

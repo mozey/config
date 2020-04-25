@@ -1,37 +1,63 @@
 # config
 
-Manage env vars with a config.json file
+Manage env vars with a flat config.json file
+
+It has two components
+- module specific `config` command to manage the env,
+- a generated config helper file to include in your module
 
 
-# Quick start
+## Dev setup
 
-    go get github.com/mozey/config
+Get the code 
 
-Set `APP_DIR`, change command below to use your project path
-
-    export APP_DIR=${GOPATH}/src/github.com/mozey/config
-
-Compile
-
-    cd ${APP_DIR}
-
-    go build \
-    -ldflags "-X main.AppDir=${APP_DIR}" \
-    -o ${APP_DIR}/config ./cmd/config
+    git clone https://github.com/mozey/config.git
     
-Create `config.dev.json` and set a key
+Reset to remove ignored files
+
+    cd config
+    ./reset.sh
+    
+`APP_DIR` must be always be set to the module root. 
+All config env vars must have a prefix, the default is `APP_`
+
+Run the tests
+
+    APP_DIR=$(pwd) gotest -v ./...
+    
+    
+## Debug
+
+Create `config.dev.json`
                         
-    cd ${APP_DIR}
+    export APP_DIR=$(pwd) 
+    cp ${APP_DIR}/config.dev.sample.json ${APP_DIR}/config.dev.json
     
-    cp config.dev.sample.json config.dev.json
-    
-    ./config -key APP_FOO -value xxx
-    
-    cat config.dev.json
-    
-Set env from config
+Run the `config` cmd.
+By default echo `config.dev.json`,
+formatted as commands to export env vars
 
-    export APP_NOT_IN_CONFIG_FILE=undefined
+    go run -ldflags "-X main.AppDir=${APP_DIR}" cmd/config/main.go
+    
+    
+## Basic Usage
+
+Build the `config` command
+
+    APP_DIR=$(pwd) go build \
+    -ldflags "-X main.AppDir=${APP_DIR}" \
+    -o ${APP_DIR}/config ./cmd/config 
+
+...and use it to set a key value in `config.dev.json`.
+Note that `APP_DIR` is also set if missing
+
+    ./config -key APP_FOO -value xxx
+
+...or manage the env vars in your shell
+
+    # This env var will be removed,
+    # it is not listed in the config file 
+    export APP_VAR_NOT_IN_CONFIG_FILE="not_for_this_app" 
     
     # Print commands
     ./config
@@ -41,58 +67,59 @@ Set env from config
     
     # Print env
     printenv | sort | grep -E "APP_"
+ 
     
-    
-# Testing
+## Prod env
 
-    cd ${GOPATH}/src/github.com/mozey/config
-
-    export APP_DEBUG=true
-    gotest -v ./...
-    
-Debug
-
-    go run -ldflags "-X main.AppDir=${APP_DIR}" cmd/config/main.go
-    
-    
-# Prod env
+The `config` cmd uses `config.dev.json` by default.
 
 Create `config.prod.json` and set a key
 
-    cp config.prod.sample.json config.prod.json
+    cp ${APP_DIR}/config.prod.sample.json ${APP_DIR}/config.prod.json
     
     ./config -env prod -key APP_BEER -value pilsner
     
-    cat config.prod.json
+Export `prod` env
+
+    ./config -env prod 
+    
+    eval "$(./config -env prod)"
+    
+    printenv | sort | grep -E "APP_"
     
 All config files must have the same keys,
-if a key does not apply set the value to an empty string.
+if a key is n/a in for an env then set the value to an empty string.
 Compare config files and print un-matched keys
 
     ./config -env dev -compare prod
     
-    # Config exits with error code if the keys don't match
+    # cmd exits with error code if the keys don't match
     echo $?
 
 
-# Generate config helper
+## Generate config helper
 
-    mkdir -p internal/config
+The config helper can be included in your app. It is useful for 
+- completion
+- reading and setting env
+- load config from file for testing
+
+Refresh the helper after adding or removing config keys
+
+    mkdir -p pkg/config
     
-    ./config -env prod -generate internal/config
+    ./config -generate pkg/config
     
-    go fmt ./internal/config/config.go
+    go fmt ./pkg/config/config.go
+
+Use the `-dry-run` flag to print the result and skip the update
+
+    ./config -generate pkg/config -dry-run
 
 
-# Dry run
+# Toggling env
 
-For commands that update files,
-use the `-dry-run` flag to print the result and skip the update
-
-
-# Helper func to toggle env
-
-Add func below to bash profile
+Create the func below to in your bash profile to quickly toggle env
 
     # Helper func to toggle env with github/mozey/config
     conf() {
@@ -127,10 +154,11 @@ Then use it to toggle env
 
 # TODO [Viper](https://github.com/spf13/viper) 
 
-Does it make sense to build this on top of or use Viper instead?
+Does it make sense to build this on top of, or use Viper instead?
 
 How would the config helper be generated?
 
-Keep in mind that env must be set in the parent process
+Keep in mind that env must be set in the parent process.
+E.g. apps should not set their own config, they must read it from the env 
 
 

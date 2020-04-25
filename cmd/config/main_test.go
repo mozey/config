@@ -82,12 +82,15 @@ func TestGenerateHelper(t *testing.T) {
 
 	env := "dev"
 	prefix := "APP"
-	generate := path.Join("x",
-		"src", "github.com", "mozey", "config", "cmd", "config", "testdata")
-	appDir := path.Join(generate)
+	appDir := os.Getenv("APP_DIR")
+	require.NotEmpty(t, appDir)
+
+	// Path to generate config helper,
+	// existing file won't be overwritten
+	generate := path.Join(appDir, "cmd", "config", "testdata")
 
 	in := &CmdIn{}
-	in.AppDir = appDir
+	in.AppDir = os.Getenv("APP_DIR")
 	in.Prefix = &prefix
 	in.Env = &env
 	in.Compare = new(string)
@@ -102,7 +105,8 @@ func TestGenerateHelper(t *testing.T) {
 	require.Equal(t, "generate", out.Cmd)
 	require.Equal(t, 0, out.ExitCode)
 	generated := out.Buf.String()
-	log.Debug().Msg(generated)
+	//log.Debug().Msg(generated)
+	log.Debug().Msg("generated should match cmd/config/testdata/config.go")
 
 	// Validate generated code
 	// https://dave.cheney.net/2016/05/10/test-fixtures-in-go
@@ -116,7 +120,12 @@ func TestGenerateHelper(t *testing.T) {
 	ref = strings.Replace(ref, "\n", "", -1)
 	require.Equal(t, ref, generated)
 
+	// Use config.dev.json from testdata
+	err = os.Setenv("APP_DIR", generate)
+	require.NoError(t, err)
 	c, err := config.LoadFile("dev")
+	require.NoError(t, err)
+	err = os.Setenv("APP_DIR", appDir)
 	require.NoError(t, err)
 	require.Equal(t, "foo", c.Foo())
 	require.Equal(t, "bar", c.Bar())

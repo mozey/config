@@ -7,7 +7,6 @@ import (
 	"fmt"
 	"io/ioutil"
 	"os"
-	"path"
 )
 
 
@@ -40,6 +39,23 @@ func (c *Config) Dir() string {
 func (c *Config) Foo() string {
 	return c.foo
 }
+
+
+// SetBar overrides the value of bar
+func (c *Config) SetBar(v string) {
+	c.bar = v
+}
+
+// SetDir overrides the value of dir
+func (c *Config) SetDir(v string) {
+	c.dir = v
+}
+
+// SetFoo overrides the value of foo
+func (c *Config) SetFoo(v string) {
+	c.foo = v
+}
+
 
 // New creates an instance of Config.
 // Build with ldflags to set the package vars.
@@ -94,8 +110,8 @@ func SetEnv(conf *Config) {
 
 // LoadFile sets the env from file and returns a new instance of Config
 func LoadFile(mode string) (conf *Config, err error) {
-	p := fmt.Sprintf(path.Join(os.Getenv("GOPATH"),
-		"/src/github.com/mozey/config/cmd/config/testdata/config.%v.json"), mode)
+	appDir := os.Getenv("APP_DIR")
+	p := fmt.Sprintf("%v/config.%v.json", appDir, mode)
 	b, err := ioutil.ReadFile(p)
 	if err != nil {
 		return nil, err
@@ -106,7 +122,7 @@ func LoadFile(mode string) (conf *Config, err error) {
 		return nil, err
 	}
 	for key, val := range configMap {
-		os.Setenv(key, val)
+		_ = os.Setenv(key, val)
 	}
 	return New(), nil
 }
