@@ -23,4 +23,4 @@ config.prod.json
 _excluded
 
 # README example generates config helper here:
-pkg/config
+pkg/example

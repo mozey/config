@@ -42,6 +42,8 @@ formatted as commands to export env vars
     
 ## Basic Usage
 
+Duplicate `cmd/config/main.go` in your module
+
 Build the `config` command
 
     APP_DIR=$(pwd) go build \
@@ -106,15 +108,15 @@ The config helper can be included in your app. It is useful for
 
 Refresh the helper after adding or removing config keys
 
-    mkdir -p pkg/config
+    mkdir -p pkg/example
     
-    ./config -generate pkg/config
+    ./config -generate pkg/example
     
-    go fmt ./pkg/config/config.go
+    go fmt ./pkg/example/config.go
 
 Use the `-dry-run` flag to print the result and skip the update
 
-    ./config -generate pkg/config -dry-run
+    ./config -generate pkg/example -dry-run
 
 
 # Toggling env
@@ -149,6 +151,7 @@ Then use it to toggle env
     
     conf prod
     
+    # Tip: don't create a prod config file on your dev machine! 
     conf stage
     
 

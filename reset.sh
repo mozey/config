@@ -13,7 +13,7 @@ cd ${APP_DIR}
 
 # Remove ignored files
 
-rm -f ./pkg/config/config.go
+rm -f ./pkg/example/config.go
 rm -f ./config
 rm -f ./config.dev.json
 rm -f ./config.prod.json

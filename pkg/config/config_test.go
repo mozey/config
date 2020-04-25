@@ -1,9 +1,9 @@
-package main
+package config
 
 import (
 	"encoding/json"
 	"fmt"
-	"github.com/mozey/config/cmd/config/testdata"
+	config "github.com/mozey/config/pkg/config/testdata"
 	"github.com/rs/zerolog/log"
 	"github.com/stretchr/testify/require"
 	"io/ioutil"
@@ -45,19 +45,23 @@ func TestGetPath(t *testing.T) {
 func TestCompareKeys(t *testing.T) {
 	tmp, err := ioutil.TempDir("", "mozey-config")
 	require.NoError(t, err)
-	defer os.RemoveAll(tmp)
+	defer (func() {
+		_ = os.RemoveAll(tmp)
+	})()
 
 	env := "dev"
 	compare := "prod"
 
-	ioutil.WriteFile(
+	err = ioutil.WriteFile(
 		path.Join(tmp, fmt.Sprintf("config.%v.json", env)),
 		[]byte(`{"APP_ONE": "1", "APP_FOO": "foo"}`),
 		0644)
-	ioutil.WriteFile(
+	require.NoError(t, err)
+	err = ioutil.WriteFile(
 		path.Join(tmp, fmt.Sprintf("config.%v.json", compare)),
 		[]byte(`{"APP_BAR": "bar", "APP_ONE": "1"}`),
 		0644)
+	require.NoError(t, err)
 
 	in := &CmdIn{}
 	in.AppDir = tmp
@@ -87,7 +91,7 @@ func TestGenerateHelper(t *testing.T) {
 
 	// Path to generate config helper,
 	// existing file won't be overwritten
-	generate := path.Join(appDir, "cmd", "config", "testdata")
+	generate := path.Join(appDir, "pkg", "config", "testdata")
 
 	in := &CmdIn{}
 	in.AppDir = os.Getenv("APP_DIR")
@@ -134,7 +138,9 @@ func TestGenerateHelper(t *testing.T) {
 func TestUpdateConfig(t *testing.T) {
 	tmp, err := ioutil.TempDir("", "mozey-config")
 	require.NoError(t, err)
-	defer os.RemoveAll(tmp)
+	defer (func() {
+		_ = os.RemoveAll(tmp)
+	})()
 
 	env := "dev"
 
@@ -175,7 +181,9 @@ func TestUpdateConfig(t *testing.T) {
 func TestSetEnv(t *testing.T) {
 	tmp, err := ioutil.TempDir("", "mozey-config")
 	require.NoError(t, err)
-	defer os.RemoveAll(tmp)
+	defer (func() {
+		_ = os.RemoveAll(tmp)
+	})()
 
 	env := "dev"
 
@@ -184,7 +192,8 @@ func TestSetEnv(t *testing.T) {
 		[]byte(`{"APP_BAR": "bar"}`),
 		0644)
 
-	os.Setenv("APP_FOO", "foo")
+	err = os.Setenv("APP_FOO", "foo")
+	require.NoError(t, err)
 
 	in := &CmdIn{}
 	in.AppDir = tmp
@@ -207,7 +216,9 @@ func TestSetEnv(t *testing.T) {
 func TestCSV(t *testing.T) {
 	tmp, err := ioutil.TempDir("", "mozey-config")
 	require.NoError(t, err)
-	defer os.RemoveAll(tmp)
+	defer (func() {
+		_ = os.RemoveAll(tmp)
+	})()
 
 	env := "dev"
 
