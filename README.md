@@ -119,7 +119,7 @@ Use the `-dry-run` flag to print the result and skip the update
     ./config -generate pkg/example -dry-run
 
 
-# Toggling env
+## Toggling env
 
 Create the func below to in your bash profile to quickly toggle env
 
@@ -155,7 +155,7 @@ Then use it to toggle env
     conf stage
     
 
-# TODO [Viper](https://github.com/spf13/viper) 
+## TODO [Viper](https://github.com/spf13/viper) 
 
 Does it make sense to build this on top of, or use Viper instead?
 
