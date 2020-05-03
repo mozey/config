@@ -6,7 +6,6 @@ It has two components
 - module specific `config` command to manage the env,
 - a generated config helper file to include in your module
 
-
 ## Dev setup
 
 Get the code 
@@ -16,7 +15,7 @@ Get the code
 Reset to remove ignored files
 
     cd config
-    ./reset.sh
+    APP_DIR=$(pwd) ./scripts/reset.sh
     
 `APP_DIR` must be always be set to the module root. 
 All config env vars must have a prefix, the default is `APP_`
@@ -26,29 +25,32 @@ Run the tests
     APP_DIR=$(pwd) gotest -v ./...
     
     
-## Debug
+## Debug    
 
 Create `config.dev.json`
                         
-    export APP_DIR=$(pwd) 
-    cp ${APP_DIR}/config.dev.sample.json ${APP_DIR}/config.dev.json
+    cp ./config.dev.sample.json ./config.dev.json
     
 Run the `config` cmd.
 By default echo `config.dev.json`,
 formatted as commands to export env vars
 
-    go run -ldflags "-X main.AppDir=${APP_DIR}" cmd/config/main.go
+    APP_DIR=$(pwd) go run cmd/config/main.go
     
     
 ## Basic Usage
 
-Duplicate `cmd/config/main.go` in your module
+Duplicate `cmd/config/main.go` in your module.
 
-Build the `config` command
+The `config` command can be customized,
+see comments in the `config.Main` func
 
-    APP_DIR=$(pwd) go build \
-    -ldflags "-X main.AppDir=${APP_DIR}" \
-    -o ${APP_DIR}/config ./cmd/config 
+Build the `config` command.
+The APP_DIR env var is required
+
+    export APP_DIR=$(pwd) 
+    
+    go build -o ${APP_DIR}/config ./cmd/config 
 
 ...and use it to set a key value in `config.dev.json`.
 Note that `APP_DIR` is also set if missing
@@ -77,13 +79,13 @@ The `config` cmd uses `config.dev.json` by default.
 
 Create `config.prod.json` and set a key
 
-    cp ${APP_DIR}/config.prod.sample.json ${APP_DIR}/config.prod.json
+    cp ./config.prod.sample.json ./config.prod.json
     
     ./config -env prod -key APP_BEER -value pilsner
     
 Export `prod` env
 
-    ./config -env prod 
+    ./config -env prod
     
     eval "$(./config -env prod)"
     
@@ -125,14 +127,19 @@ Create the func below to in your bash profile to quickly toggle env
 
     # Helper func to toggle env with github/mozey/config
     conf() {
-        local ENV=${1}
-        if [[ -z "${ENV}" ]]; then
-            local ENV="dev"
-        fi
-    
         if ! test -f "./config"; then
             echo "config cmd not found"
             return 1
+        fi
+        
+        if [[ -z "${APP_DIR}" ]]; then
+            # Default is current dir
+            export APP_DIR=$(pwd)
+        fi 
+        
+        local ENV=${1}
+        if [[ -z "${ENV}" ]]; then
+            local ENV="dev"
         fi
     
         if test -f "./config.${ENV}.json"; then

@@ -373,6 +373,7 @@ func Cmd(in *CmdIn) (out *CmdOut, err error) {
 		return out, nil
 	}
 
+	// Default
 	// Print set env commands
 	buf, err := SetEnv(in)
 	if err != nil {
@@ -383,10 +384,8 @@ func Cmd(in *CmdIn) (out *CmdOut, err error) {
 	return out, nil
 }
 
-func Run(appDir string) {
+func ParseFlags() *CmdIn {
 	in := CmdIn{}
-
-	in.AppDir = appDir
 
 	// Flags
 	in.Prefix = flag.String("prefix", "APP", "Config key prefix")
@@ -403,9 +402,13 @@ func Run(appDir string) {
 		"csv", false, "Print env key=value CSV")
 	in.DryRun = flag.Bool(
 		"dry-run", false, "Don't write files, just print result")
+
 	flag.Parse()
 
-	// Set config
+	return &in
+}
+
+func (in *CmdIn) SetConfig() {
 	config, err := NewConfig(in.AppDir, *in.Env, *in.Prefix)
 	if err != nil {
 		log.Debug().Msgf("AppDir %v", in.AppDir)
@@ -413,13 +416,10 @@ func Run(appDir string) {
 		panic(err)
 	}
 	in.Config = config
+}
 
-	// Run command
-	out, err := Cmd(&in)
-	if err != nil {
-		panic(err)
-	}
-
+func (in *CmdIn) Process(out *CmdOut) {
+	var err error
 	switch out.Cmd {
 	case "set_env":
 		// Print set and unset env commands
@@ -466,6 +466,46 @@ func Run(appDir string) {
 		fmt.Print(out.Buf.String())
 		os.Exit(out.ExitCode)
 	}
+}
+
+// Main can be executed as the default.
+// For custom flags and CMDs copy the code below.
+// Try not to change the behaviour of default CMDs,
+// e.g. custom flags must only add functionality
+func Main() {
+	// Define custom flags here...
+
+	// Parse flags
+	in := ParseFlags()
+
+	// appDir is required
+	appDirKey := fmt.Sprintf("%s_DIR", *in.Prefix)
+	appDir := os.Getenv(appDirKey)
+	if appDir == "" {
+		fmt.Printf("%v env not set\n", appDirKey)
+		os.Exit(1)
+	}
+	in.AppDir = appDir
+
+	// Set config
+	config, err := NewConfig(in.AppDir, *in.Env, *in.Prefix)
+	if err != nil {
+		log.Debug().Msgf("AppDir %v", in.AppDir)
+		log.Debug().Msgf("Env %v", *in.Env)
+		panic(err)
+	}
+	in.Config = config
+
+	// Run custom commands here...
+
+	// Run cmd
+	out, err := Cmd(in)
+	if err != nil {
+		panic(err)
+	}
+
+	// Process cmd results
+	in.Process(out)
 }
 
 // standard way to recognize machine-generated files
