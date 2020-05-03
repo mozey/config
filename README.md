@@ -133,10 +133,9 @@ Create the func below to in your bash profile to quickly toggle env
             return 1
         fi
         
-        if [[ -z "${APP_DIR}" ]]; then
-            # Default is current dir
-            export APP_DIR=$(pwd)
-        fi 
+        # APP_DIR is the full path to the config cmd dir.
+        # This makes switching between different projects easier 
+        export APP_DIR=$(pwd)
         
         local ENV=${1}
         if [[ -z "${ENV}" ]]; then
