@@ -1,9 +1,9 @@
-package config
+package cmdconfig
 
 import (
 	"encoding/json"
 	"fmt"
-	config "github.com/mozey/config/pkg/config/testdata"
+	config "github.com/mozey/config/pkg/cmdconfig/testdata"
 	"github.com/rs/zerolog/log"
 	"github.com/stretchr/testify/require"
 	"io/ioutil"
@@ -91,7 +91,7 @@ func TestGenerateHelper(t *testing.T) {
 
 	// Path to generate config helper,
 	// existing file won't be overwritten
-	generate := path.Join(appDir, "pkg", "config", "testdata")
+	generate := path.Join(appDir, "pkg", "cmdconfig", "testdata")
 
 	in := &CmdIn{}
 	in.AppDir = os.Getenv("APP_DIR")
@@ -110,7 +110,7 @@ func TestGenerateHelper(t *testing.T) {
 	require.Equal(t, 0, out.ExitCode)
 	generated := out.Buf.String()
 	//log.Debug().Msg(generated)
-	log.Debug().Msg("generated should match cmd/config/testdata/config.go")
+	log.Debug().Msg("generated should match cmd/cmdconfig/testdata/config.go")
 
 	// Validate generated code
 	// https://dave.cheney.net/2016/05/10/test-fixtures-in-go

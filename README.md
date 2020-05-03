@@ -4,17 +4,18 @@ Manage env vars with a flat config.json file
 
 It has two components
 - module specific `config` command to manage the env,
-- a generated config helper file to include in your module
+- generated helper file (`pkg/config/config.go`) to include in your module
 
-## Dev setup
+## Quick start
 
 Get the code 
 
     git clone https://github.com/mozey/config.git
     
+    cd config
+    
 Reset to remove ignored files
 
-    cd config
     APP_DIR=$(pwd) ./scripts/reset.sh
     
 `APP_DIR` must be always be set to the module root. 
@@ -23,7 +24,7 @@ All config env vars must have a prefix, the default is `APP_`
 Run the tests
 
     APP_DIR=$(pwd) gotest -v ./...
-    
+
     
 ## Debug    
 
@@ -110,15 +111,15 @@ The config helper can be included in your app. It is useful for
 
 Refresh the helper after adding or removing config keys
 
-    mkdir -p pkg/example
+    mkdir -p pkg/config
     
-    ./config -generate pkg/example
+    ./config -generate pkg/config
     
-    go fmt ./pkg/example/config.go
+        go fmt ./pkg/config/config.go
 
 Use the `-dry-run` flag to print the result and skip the update
 
-    ./config -generate pkg/example -dry-run
+    ./config -generate pkg/config -dry-run
 
 
 ## Toggling env
@@ -160,6 +161,18 @@ Then use it to toggle env
     
     # Tip: don't create a prod config file on your dev machine! 
     conf stage
+    
+## Config script
+
+Duplicate `scripts/config.sh` in your module.
+
+Use the config script to
+- build the config cmd
+- create the dev config file
+- generate the config helper
+    
+
+    APP_DIR=$(pwd) ./scripts/config.sh
     
 
 ## TODO [Viper](https://github.com/spf13/viper) 
