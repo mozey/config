@@ -128,12 +128,9 @@ Copy the conf script to your home dir
 
     cp ./conf.sh ~/.conf.sh
 
-Create an alias in your bash profile to quickly toggle env
+Source the script in your bash profile to create the conf func
 
-    alias conf="${HOME}/.conf.sh"
-
-    # Source the profile
-    source ~/.profile
+    source ${HOME}/.conf.sh
     
 Use the alias to toggle env
 
