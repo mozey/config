@@ -124,35 +124,18 @@ Use the `-dry-run` flag to print the result and skip the update
 
 ## Toggling env
 
-Create the func below to in your bash profile to quickly toggle env
+Copy the conf script to your home dir
 
-    # Helper func to toggle env with github/mozey/config
-    conf() {
-        if ! test -f "./config"; then
-            echo "config cmd not found"
-            return 1
-        fi
-        
-        # APP_DIR is the full path to the config cmd dir.
-        # This makes switching between different projects easier 
-        export APP_DIR=$(pwd)
-        
-        local ENV=${1}
-        if [[ -z "${ENV}" ]]; then
-            local ENV="dev"
-        fi
+    cp ./conf.sh ~/.conf.sh
+
+Create an alias in your bash profile to quickly toggle env
+
+    alias conf="${HOME}/.conf.sh"
+
+    # Source the profile
+    source ~/.profile
     
-        if test -f "./config.${ENV}.json"; then
-            eval "$(./config -env ${ENV})"
-            # Checking retVal with $? won't work here
-            printenv | sort | grep -E "APP_|AWS_"
-        else
-            echo "config file not found"
-            return 1
-        fi
-    }
-    
-Then use it to toggle env
+Use the alias to toggle env
 
     conf 
     
