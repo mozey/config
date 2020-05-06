@@ -122,13 +122,14 @@ Use the `-dry-run` flag to print the result and skip the update
     ./config -generate pkg/config -dry-run
 
 
-## Toggling env
+    ## Toggling env
 
 Copy the conf script to your home dir
 
     cp ./conf.sh ~/.conf.sh
 
-Source the script in your bash profile to create the conf func
+Source the script on [bash startup](https://www.gnu.org/software/bash/manual/html_node/Bash-Startup-Files.html),
+e.g. `~/.bashrc`, to create the conf func
 
     source ${HOME}/.conf.sh
     
@@ -141,7 +142,7 @@ Use the alias to toggle env
     # Tip: don't create a prod config file on your dev machine! 
     conf stage
     
-## Config script
+## Build script
 
 Duplicate `scripts/config.sh` in your module.
 
