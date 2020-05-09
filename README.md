@@ -122,7 +122,7 @@ Use the `-dry-run` flag to print the result and skip the update
     ./config -generate pkg/config -dry-run
 
 
-    ## Toggling env
+## Toggling env
 
 Copy the conf script to your home dir
 
