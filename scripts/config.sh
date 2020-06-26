@@ -7,7 +7,7 @@ APP_DIR=${APP_DIR}
 
 cd ${APP_DIR}
 echo "build config cmd..."
-go build -o ${APP_DIR}/configu ./main.go
+go build -o ${APP_DIR}/configu ./cmd/configu/...
 
 # Create config files if they don't exist
 if [[ ! -f ${APP_DIR}/config.dev.json ]]; then

@@ -13,14 +13,12 @@
 # Output of the go coverage tool, specifically when used with LiteIDE
 *.out
 
-config
-!config/
+/configu
 
-config.dev.json
-config.prod.json
-!cmd/config/testdata/config.dev.json
+/config.dev.json
+/config.prod.json
 
-_excluded
+/_excluded
 
 # README example generates config helper here:
-pkg/config
+/pkg/config
