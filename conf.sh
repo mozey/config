@@ -5,8 +5,8 @@
 # Helper func to toggle env with github.com/mozey/config
 conf() {
     # Script must run in same dir as the config cmd
-    if ! test -f "./config"; then
-        echo "config cmd not found"
+    if ! test -f "${GOPATH}/bin/configu"; then
+        echo "${GOPATH}/bin/configu not found"
         return 1
     fi
 
@@ -24,12 +24,12 @@ conf() {
     fi
 
     # Set env as per config file
-    if test -f "./config.${ENV}.json"; then
-        eval "$(./config -env ${ENV})"
+    if test -f "${APP_DIR}/config.${ENV}.json"; then
+        eval "$(${GOPATH}/bin/configu -env ${ENV})"
         # Checking retVal with $? won't work here
         printenv | sort | grep --color -E "APP_|AWS_"
     else
-        echo "config file not found"
+        echo "${APP_DIR}/config.${ENV}.json not found"
         return 1
     fi
 }

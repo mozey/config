@@ -3,10 +3,36 @@
 Manage env vars with a flat config.json file
 
 It has two components
-- module specific `config` command to manage the env,
+- `configu` command to manage the env,
 - generated helper file (`pkg/config/config.go`) to include in your module
 
+
 ## Quick start
+
+Install
+
+    go get github.com/mozey/config/...
+    
+Create a config file
+    
+    echo '{"APP_FOO": "foo", "APP_BAR": "foo"}' > config.dev.json
+    export APP_OTHER="this.will.be.unset"
+    
+    printenv | grep APP_
+    
+Print commands
+
+    export APP_DIR=$(pwd)
+    ${GOPATH}/bin/configu
+    
+Reset env
+
+    eval "$(${GOPATH}/bin/configu)"
+
+    printenv | grep APP_
+
+
+## Dev setup
 
 Get the code 
 
@@ -32,31 +58,31 @@ Create `config.dev.json`
                         
     cp ./config.dev.sample.json ./config.dev.json
     
-Run the `config` cmd.
-By default echo `config.dev.json`,
+Run the `configu` cmd.
+By default, echo `config.dev.json`,
 formatted as commands to export env vars
 
-    APP_DIR=$(pwd) go run cmd/config/main.go
+    APP_DIR=$(pwd) go run cmd/configu/main.go
     
     
-## Basic Usage
+## Advanced Usage
 
-Duplicate `cmd/config/main.go` in your module.
+Duplicate `cmd/configu/main.go` in your module.
 
-The `config` command can be customized,
+The `configu` command can be customized,
 see comments in the `config.Main` func
 
-Build the `config` command.
+Build the `configu` command.
 The APP_DIR env var is required
 
     export APP_DIR=$(pwd) 
     
-    go build -o ${APP_DIR}/config ./cmd/config 
+    go build -o ${APP_DIR}/configu ./cmd/configu 
 
 ...and use it to set a key value in `config.dev.json`.
 Note that `APP_DIR` is also set if missing
 
-    ./config -key APP_FOO -value xxx
+    ./configu -key APP_FOO -value xxx
 
 ...or manage the env vars in your shell
 
@@ -65,10 +91,10 @@ Note that `APP_DIR` is also set if missing
     export APP_VAR_NOT_IN_CONFIG_FILE="not_for_this_app" 
     
     # Print commands
-    ./config
+    ./configu
 
     # Set env    
-    eval "$(./config)"
+    eval "$(./configu)"
     
     # Print env
     printenv | sort | grep -E "APP_"
@@ -76,19 +102,19 @@ Note that `APP_DIR` is also set if missing
     
 ## Prod env
 
-The `config` cmd uses `config.dev.json` by default.
+The `configu` cmd uses `config.dev.json` by default.
 
 Create `config.prod.json` and set a key
 
     cp ./config.prod.sample.json ./config.prod.json
     
-    ./config -env prod -key APP_BEER -value pilsner
+    ./configu -env prod -key APP_BEER -value pilsner
     
 Export `prod` env
 
-    ./config -env prod
+    ./configu -env prod
     
-    eval "$(./config -env prod)"
+    eval "$(./configu -env prod)"
     
     printenv | sort | grep -E "APP_"
     
@@ -96,7 +122,7 @@ All config files must have the same keys,
 if a key is n/a in for an env then set the value to an empty string.
 Compare config files and print un-matched keys
 
-    ./config -env dev -compare prod
+    ./configu -env dev -compare prod
     
     # cmd exits with error code if the keys don't match
     echo $?
@@ -113,13 +139,13 @@ Refresh the helper after adding or removing config keys
 
     mkdir -p pkg/config
     
-    ./config -generate pkg/config
+    ./configu -generate pkg/config
     
         go fmt ./pkg/config/config.go
 
 Use the `-dry-run` flag to print the result and skip the update
 
-    ./config -generate pkg/config -dry-run
+    ./configu -generate pkg/config -dry-run
 
 
 ## Toggling env

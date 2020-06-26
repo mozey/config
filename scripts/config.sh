@@ -7,7 +7,7 @@ APP_DIR=${APP_DIR}
 
 cd ${APP_DIR}
 echo "build config cmd..."
-go build -o ${APP_DIR}/config ./cmd/config
+go build -o ${APP_DIR}/configu ./main.go
 
 # Create config files if they don't exist
 if [[ ! -f ${APP_DIR}/config.dev.json ]]; then
@@ -17,6 +17,6 @@ fi
 
 echo "generate config helper..."
 cd ${APP_DIR}
-./config -generate ./pkg/config
+./configu -generate ./pkg/config
 go fmt ./pkg/config/config.go
 
