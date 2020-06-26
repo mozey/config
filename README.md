@@ -141,7 +141,7 @@ Refresh the helper after adding or removing config keys
     
     ./configu -generate pkg/config
     
-        go fmt ./pkg/config/config.go
+    go fmt ./pkg/config/config.go
 
 Use the `-dry-run` flag to print the result and skip the update
 
