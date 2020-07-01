@@ -5,7 +5,7 @@ Manage env vars with a flat config.json file
 `mozey/config` has the following components
 - Command to manage the env: `configu`
 - Bash function to toggle env: `conf`
-- Generate helper files (e.g. `pkg/config/config.go`) to include in your module
+- Generate a package (e.g. `pkg/config/config.go`) to include in your module
 
 
 ## Quick start
@@ -17,7 +17,10 @@ Install
 Create a config file
     
     echo '{"APP_FOO": "foo", "APP_BAR": "foo"}' > config.dev.json
-    export APP_OTHER="this.will.be.unset"
+
+    # This env var will be removed,
+    # it is not listed in the config file 
+    export APP_VAR_NOT_IN_CONFIG_FILE="not_for_this_app"
     
     printenv | grep APP_
     
@@ -31,6 +34,11 @@ Reset env
     eval "$(${GOPATH}/bin/configu)"
 
     printenv | grep APP_
+    
+Set a key value in `config.dev.json`.
+Note that `APP_DIR` is also set if missing
+
+    ./configu -key APP_FOO -value xxx
     
     
 ## Toggling env
@@ -52,7 +60,71 @@ Use the func to toggle env
     
     # Tip: don't create a prod config file on your dev machine! 
     conf stage
+    
+    
+## Generate config package
 
+The config package can be included in your app. It is useful for 
+- completion
+- reading and setting env
+- load config from file for testing
+
+Use the `-dry-run` flag to print the result and skip the update
+
+    configu -generate pkg/config -dry-run
+    
+Refresh the package after adding or removing config keys
+
+    mkdir -p pkg/config
+    
+    configu -generate pkg/config
+    
+    go fmt ./pkg/config/config.go
+
+    
+## Build script
+
+Duplicate `scripts/config.sh` in your module.
+
+Use the config script to
+- create the dev config file
+- generate the config package
+    
+
+    APP_DIR=$(pwd) ./scripts/config.sh
+
+
+## Prod env
+
+The `configu` cmd uses `config.dev.json` by default.
+
+Create `config.prod.json` and set a key
+
+    cp ./config.prod.sample.json ./config.prod.json
+    
+    configu -env prod -key APP_BEER -value pilsner
+    
+Export `prod` env
+
+    configu -env prod
+    
+    eval "$(configu -env prod)"
+    
+    printenv | sort | grep -E "APP_"
+    
+All config files must have the same keys,
+if a key is n/a in for an env then set the value to an empty string.
+Compare config files and print un-matched keys
+
+    configu -env dev -compare prod
+    
+    # cmd exits with error code if the keys don't match
+    echo $?
+    
+Set a key value in `config.prod.json`.
+
+    ./configu -env prod -key APP_FOO -value xxx
+    
 
 ## Dev setup
 
@@ -99,95 +171,18 @@ The APP_DIR env var is required
 
     export APP_DIR=$(pwd) 
     
-    go build -o ${APP_DIR}/configu ./cmd/configu 
-
-...and use it to set a key value in `config.dev.json`.
-Note that `APP_DIR` is also set if missing
-
-    ./configu -key APP_FOO -value xxx
-
-...or manage the env vars in your shell
-
-    # This env var will be removed,
-    # it is not listed in the config file 
-    export APP_VAR_NOT_IN_CONFIG_FILE="not_for_this_app" 
+    go build -o ${APP_DIR}/configu ./cmd/configu
     
-    # Print commands
-    ./configu
+Then use the local command
 
-    # Set env    
-    eval "$(./configu)"
-    
-    # Print env
-    printenv | sort | grep -E "APP_"
- 
-    
-## Prod env
+    ./configu 
 
-The `configu` cmd uses `config.dev.json` by default.
-
-Create `config.prod.json` and set a key
-
-    cp ./config.prod.sample.json ./config.prod.json
-    
-    ./configu -env prod -key APP_BEER -value pilsner
-    
-Export `prod` env
-
-    ./configu -env prod
-    
-    eval "$(./configu -env prod)"
-    
-    printenv | sort | grep -E "APP_"
-    
-All config files must have the same keys,
-if a key is n/a in for an env then set the value to an empty string.
-Compare config files and print un-matched keys
-
-    ./configu -env dev -compare prod
-    
-    # cmd exits with error code if the keys don't match
-    echo $?
-
-
-## Generate config helper
-
-The config helper can be included in your app. It is useful for 
-- completion
-- reading and setting env
-- load config from file for testing
-
-Refresh the helper after adding or removing config keys
-
-    mkdir -p pkg/config
-    
-    ./configu -generate pkg/config
-    
-    go fmt ./pkg/config/config.go
-
-Use the `-dry-run` flag to print the result and skip the update
-
-    ./configu -generate pkg/config -dry-run
-    
-    
-## Build script
-
-Duplicate `scripts/config.sh` in your module.
-
-Use the config script to
-- build the config cmd
-- create the dev config file
-- generate the config helper
-    
-
-    APP_DIR=$(pwd) ./scripts/config.sh
-    
 
 ## TODO [Viper](https://github.com/spf13/viper) 
 
 Does it make sense to build this on top of, or use Viper instead?
 
-How would the config helper be generated?
+How would the config package be generated?
 
 Keep in mind that env must be set in the parent process.
 E.g. apps should not set their own config, they must read it from the env 

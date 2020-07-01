@@ -6,8 +6,10 @@ bash -c 'set -o pipefail' # return code of first cmd to fail in a pipeline
 APP_DIR=${APP_DIR}
 
 cd ${APP_DIR}
-echo "build config cmd..."
-go build -o ${APP_DIR}/configu ./cmd/configu/...
+
+# Uncomment below for advanced usage with local `./configu` cmd
+#echo "build config cmd..."
+#go build -o ${APP_DIR}/configu ./cmd/configu/...
 
 # Create config files if they don't exist
 if [[ ! -f ${APP_DIR}/config.dev.json ]]; then
