@@ -2,9 +2,10 @@
 
 Manage env vars with a flat config.json file
 
-It has two components
-- `configu` command to manage the env,
-- generated helper file (`pkg/config/config.go`) to include in your module
+`mozey/config` has the following components
+- Command to manage the env: `configu`
+- Bash function to toggle env: `conf`
+- Generate helper files (e.g. `pkg/config/config.go`) to include in your module
 
 
 ## Quick start
@@ -43,7 +44,7 @@ e.g. `~/.bashrc`, to create the conf func
 
     source ${HOME}/.conf.sh
     
-Use the alias to toggle env
+Use the func to toggle env
 
     conf 
     
