@@ -154,7 +154,7 @@ func TestUpdateConfig(t *testing.T) {
 	prefix := "APP"
 	in.Prefix = &prefix
 	in.Env = &env
-	keys := ArgMap{"APP_FOO", "APP_BAR"}
+	keys := ArgMap{"APP_FOO", "APP_bar"}
 	values := ArgMap{"update 1", "update 2"}
 	in.Keys = &keys
 	in.Values = &values
@@ -175,6 +175,7 @@ func TestUpdateConfig(t *testing.T) {
 	err = json.Unmarshal(out.Buf.Bytes(), &m)
 	require.NoError(t, err)
 	require.Equal(t, "update 1", m["APP_FOO"])
+	require.Empty(t, m["APP_bar"], "keys must be uppercase")
 	require.Equal(t, "update 2", m["APP_BAR"])
 }
 

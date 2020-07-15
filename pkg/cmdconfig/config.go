@@ -87,7 +87,7 @@ func RefreshKeys(c *Config) {
 	c.Keys = nil
 	// Set config keys
 	for k := range c.Map {
-		c.Keys = append(c.Keys, k)
+		c.Keys = append(c.Keys, strings.ToUpper(k))
 	}
 	// Sort keys
 	sort.Strings(c.Keys)
@@ -242,6 +242,8 @@ func UpdateConfig(in *CmdIn) (buf *bytes.Buffer, err error) {
 	keys := *in.Keys
 	values := *in.Values
 	for i, key := range keys {
+		key = strings.ToUpper(key)
+
 		if !strings.HasPrefix(key, *in.Prefix) {
 			return buf, fmt.Errorf("key must strart with prefix %v", in.Prefix)
 		}
