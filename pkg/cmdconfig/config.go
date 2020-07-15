@@ -408,16 +408,6 @@ func ParseFlags() *CmdIn {
 	return &in
 }
 
-func (in *CmdIn) SetConfig() {
-	config, err := NewConfig(in.AppDir, *in.Env, *in.Prefix)
-	if err != nil {
-		log.Debug().Msgf("AppDir %v", in.AppDir)
-		log.Debug().Msgf("Env %v", *in.Env)
-		panic(err)
-	}
-	in.Config = config
-}
-
 func (in *CmdIn) Process(out *CmdOut) {
 	var err error
 	switch out.Cmd {
@@ -433,12 +423,12 @@ func (in *CmdIn) Process(out *CmdOut) {
 		} else {
 			configPath, err := GetPath(in.AppDir, *in.Env)
 			if err != nil {
-				panic(err)
+				log.Fatal().Stack().Err(err).Msg("")
 			}
 			// Update config file
 			err = ioutil.WriteFile(configPath, out.Buf.Bytes(), 0)
 			if err != nil {
-				panic(err)
+				log.Fatal().Stack().Err(err).Msg("")
 			}
 		}
 		os.Exit(out.ExitCode)
@@ -453,7 +443,7 @@ func (in *CmdIn) Process(out *CmdOut) {
 				out.Buf.Bytes(),
 				0644)
 			if err != nil {
-				panic(err)
+				log.Fatal().Stack().Err(err).Msg("")
 			}
 		}
 		os.Exit(out.ExitCode)
@@ -490,9 +480,10 @@ func Main() {
 	// Set config
 	config, err := NewConfig(in.AppDir, *in.Env, *in.Prefix)
 	if err != nil {
-		log.Debug().Msgf("AppDir %v", in.AppDir)
-		log.Debug().Msgf("Env %v", *in.Env)
-		panic(err)
+		log.Fatal().
+			Str("APP_DIR", in.AppDir).
+			Str("env", *in.Env).
+			Stack().Err(err).Msg("")
 	}
 	in.Config = config
 
@@ -501,7 +492,7 @@ func Main() {
 	// Run cmd
 	out, err := Cmd(in)
 	if err != nil {
-		panic(err)
+		log.Fatal().Stack().Err(err).Msg("")
 	}
 
 	// Process cmd results
