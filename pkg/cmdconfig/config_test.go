@@ -174,6 +174,7 @@ func TestUpdateConfig(t *testing.T) {
 	m := make(map[string]string)
 	err = json.Unmarshal(out.Buf.Bytes(), &m)
 	require.NoError(t, err)
+	require.Empty(t, m["APP_DIR"], "APP_DIR must not be set in config file")
 	require.Equal(t, "update 1", m["APP_FOO"])
 	require.Empty(t, m["APP_bar"], "keys must be uppercase")
 	require.Equal(t, "update 2", m["APP_BAR"])
@@ -209,8 +210,8 @@ func TestSetEnv(t *testing.T) {
 	buf, err := SetEnv(in)
 	require.NoError(t, err)
 	s := buf.String()
+	require.NotContains(t, s, "export APP_DIR=")
 	require.Contains(t, s, "export APP_BAR=bar\n")
-	require.Contains(t, s, "export APP_DIR=")
 	require.Contains(t, s, "unset APP_FOO\n")
 }
 
@@ -245,6 +246,6 @@ func TestCSV(t *testing.T) {
 	require.Equal(t, "csv", out.Cmd)
 	require.Equal(t, 0, out.ExitCode)
 
-	e := fmt.Sprintf("APP_BAR=bar,APP_DIR=%v,APP_FOO=foo", in.AppDir)
+	e := fmt.Sprintf("APP_BAR=bar,APP_FOO=foo")
 	require.Equal(t, e, out.Buf.String())
 }

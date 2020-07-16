@@ -1,3 +1,4 @@
+
 // Code generated with https://github.com/mozey/config DO NOT EDIT
 
 package config
@@ -12,18 +13,18 @@ import (
 
 // APP_BAR
 var bar string
-// APP_DIR
-var dir string
 // APP_FOO
 var foo string
+// APP_DIR
+var dir string
 
 
 // Config fields correspond to config file keys less the prefix
 type Config struct {
 
 	bar string // APP_BAR
-	dir string // APP_DIR
 	foo string // APP_FOO
+	dir string // APP_DIR
 }
 
 
@@ -31,13 +32,13 @@ type Config struct {
 func (c *Config) Bar() string {
 	return c.bar
 }
-// Dir is APP_DIR
-func (c *Config) Dir() string {
-	return c.dir
-}
 // Foo is APP_FOO
 func (c *Config) Foo() string {
 	return c.foo
+}
+// Dir is APP_DIR
+func (c *Config) Dir() string {
+	return c.dir
 }
 
 
@@ -46,14 +47,14 @@ func (c *Config) SetBar(v string) {
 	c.bar = v
 }
 
-// SetDir overrides the value of dir
-func (c *Config) SetDir(v string) {
-	c.dir = v
-}
-
 // SetFoo overrides the value of foo
 func (c *Config) SetFoo(v string) {
 	c.foo = v
+}
+
+// SetDir overrides the value of dir
+func (c *Config) SetDir(v string) {
+	c.dir = v
 }
 
 
@@ -76,12 +77,12 @@ func SetVars(conf *Config) {
 		conf.bar = bar
 	}
 
-	if dir != "" {
-		conf.dir = dir
-	}
-
 	if foo != "" {
 		conf.foo = foo
+	}
+
+	if dir != "" {
+		conf.dir = dir
 	}
 
 }
@@ -96,14 +97,14 @@ func SetEnv(conf *Config) {
 		conf.bar = v
 	}
 
-	v = os.Getenv("APP_DIR")
-	if v != "" {
-		conf.dir = v
-	}
-
 	v = os.Getenv("APP_FOO")
 	if v != "" {
 		conf.foo = v
+	}
+
+	v = os.Getenv("APP_DIR")
+	if v != "" {
+		conf.dir = v
 	}
 
 }

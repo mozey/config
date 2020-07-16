@@ -102,7 +102,7 @@ func NewConfig(appDir string, env string, prefix string) (c *Config, err error) 
 	}
 	b, err := ioutil.ReadFile(configPath)
 	if err != nil {
-		log.Debug().Msgf("reading config at path %v", configPath)
+		//log.Debug().Msgf("reading config at path %v", configPath)
 		return c, err
 	}
 
@@ -112,27 +112,8 @@ func NewConfig(appDir string, env string, prefix string) (c *Config, err error) 
 	// The config file must have a flat key value structure
 	err = json.Unmarshal(b, &c.Map)
 	if err != nil {
-		log.Debug().Msgf("unmarshal config at path %v", configPath)
+		//log.Debug().Msgf("unmarshal config at path %v", configPath)
 		return c, err
-	}
-
-	// The value for AppDir must be compiled with ldflags
-	if prefix == "" {
-		return c, fmt.Errorf("prefix must not be empty")
-	}
-	appDirKey := fmt.Sprintf("%v_DIR", prefix)
-	if _, ok := c.Map[appDirKey]; ok {
-		if c.Map[appDirKey] != "" {
-			// app dir set in config,
-			// confirm match to prevent accidentally using wrong config file
-			if appDir != c.Map[appDirKey] {
-				return c, fmt.Errorf("app dir does not match config file")
-			}
-		}
-	} else {
-		// app dir not set in config file,
-		// add to map so it gets set on env
-		c.Map[appDirKey] = appDir
 	}
 
 	RefreshKeys(c)
@@ -203,7 +184,10 @@ func GenerateHelper(in *CmdIn) (buf *bytes.Buffer, err error) {
 		Prefix:  *in.Prefix,
 		AppDir: in.AppDir,
 	}
-	for _, keyPrefix := range in.Config.Keys {
+	keys := make([]string, len(in.Config.Keys))
+	copy(keys, in.Config.Keys)
+	keys = append(keys, fmt.Sprintf("%v_DIR", *in.Prefix))
+	for _, keyPrefix := range keys {
 		key := strings.Replace(
 			keyPrefix, fmt.Sprintf("%v_", *in.Prefix), "", 1)
 		key = strings.Replace(key, "_", " ", -1)
@@ -254,7 +238,7 @@ func UpdateConfig(in *CmdIn) (buf *bytes.Buffer, err error) {
 		value := values[i]
 
 		// Update key value pairs
-		log.Debug().Msgf("Config %v %v=%v", *in.Env, key, value)
+		//log.Debug().Msgf("Config %v %v=%v", *in.Env, key, value)
 		m[key] = value
 		RefreshKeys(in.Config)
 	}
