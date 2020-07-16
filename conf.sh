@@ -26,6 +26,7 @@ conf() {
     # Set env as per config file
     if test -f "${APP_DIR}/config.${ENV}.json"; then
         eval "$(${GOPATH}/bin/configu -env ${ENV})"
+        eval "export APP_DIR=$(pwd)"
         # Checking retVal with $? won't work here
         printenv | sort | grep --color -E "APP_|AWS_"
     else
