@@ -121,6 +121,10 @@ Compare config files and print un-matched keys
     # cmd exits with error code if the keys don't match
     echo $?
     
+Compare keys in `config.dev.json` with `sample.config.dev.json`
+
+    configu -env dev -compare sample.dev
+    
 Set a key value in `config.prod.json`.
 
     ./configu -env prod -key APP_FOO -value xxx

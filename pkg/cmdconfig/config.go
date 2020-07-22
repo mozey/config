@@ -80,7 +80,16 @@ func GetPath(appDir string, env string) (string, error) {
 			return "", err
 		}
 	}
-	return path.Join(appDir, fmt.Sprintf("config.%v.json", env)), nil
+
+	// Strip "sample." prefix from env
+	samplePrefix := "sample."
+	sample := ""
+	if strings.Contains(env, samplePrefix) {
+		sample = samplePrefix
+		env = strings.Replace(env, samplePrefix, "", 1)
+	}
+
+	return path.Join(appDir, fmt.Sprintf("%vconfig.%v.json", sample, env)), nil
 }
 
 func RefreshKeys(c *Config) {
@@ -93,6 +102,7 @@ func RefreshKeys(c *Config) {
 	sort.Strings(c.Keys)
 }
 
+// TODO Remove prefix param?
 // NewConfig reads a config file and sets the key map
 func NewConfig(appDir string, env string, prefix string) (c *Config, err error) {
 	// Read config file
