@@ -287,6 +287,13 @@ func SetEnv(in *CmdIn) (buf *bytes.Buffer, err error) {
 		envKeys[key] = false
 	}
 
+	// Don't print command to unset APP_DIR
+	// https://github.com/mozey/config/issues/9
+	appDirKey := fmt.Sprintf("%v_DIR", *in.Prefix)
+	if _, ok := envKeys[appDirKey]; ok {
+		envKeys[appDirKey] = false
+	}
+
 	// Unset env vars not listed in the config file
 	for key, unset := range envKeys {
 		if unset {

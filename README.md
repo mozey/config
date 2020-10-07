@@ -35,10 +35,9 @@ Reset env
 
     printenv | grep APP_
     
-Set a key value in `config.dev.json`.
-Note that `APP_DIR` is also set if missing
+Set a key value in `config.dev.json`
 
-    ./configu -key APP_FOO -value xxx
+    ${GOPATH}/bin/configu -key APP_FOO -value xxx
     
     
 ## Toggling env

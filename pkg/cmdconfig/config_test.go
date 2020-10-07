@@ -210,9 +210,9 @@ func TestSetEnv(t *testing.T) {
 	buf, err := SetEnv(in)
 	require.NoError(t, err)
 	s := buf.String()
-	require.NotContains(t, s, "export APP_DIR=")
 	require.Contains(t, s, "export APP_BAR=bar\n")
 	require.Contains(t, s, "unset APP_FOO\n")
+	require.NotContains(t, s, "unset APP_DIR\n")
 }
 
 func TestCSV(t *testing.T) {
