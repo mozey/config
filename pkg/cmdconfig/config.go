@@ -282,7 +282,7 @@ func SetEnv(in *CmdIn) (buf *bytes.Buffer, err error) {
 
 	// Commands to set env
 	for _, key := range in.Config.Keys {
-		buf.WriteString(fmt.Sprintf("export %v=%v", key, in.Config.Map[key]))
+		buf.WriteString(fmt.Sprintf(ExportFormat, key, in.Config.Map[key]))
 		buf.WriteString("\n")
 		envKeys[key] = false
 	}
@@ -297,7 +297,7 @@ func SetEnv(in *CmdIn) (buf *bytes.Buffer, err error) {
 	// Unset env vars not listed in the config file
 	for key, unset := range envKeys {
 		if unset {
-			buf.WriteString(fmt.Sprintf("unset %v", key))
+			buf.WriteString(fmt.Sprintf(UnsetFormat, key))
 			buf.WriteString("\n")
 		}
 	}

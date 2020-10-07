@@ -12,7 +12,7 @@ Manage env vars with a flat config.json file
 
 Install
 
-    go get github.com/mozey/config/...
+    go get -u github.com/mozey/config/...
     
 Create a config file
     
