@@ -179,6 +179,42 @@ The APP_DIR env var is required
 Then use the local command
 
     ./configu 
+    
+    
+## Windows
+
+Install
+
+    go get -u github.com/mozey/config/...
+    
+Assuming [clink](https://mridgers.github.io/clink) and
+[gow](https://github.com/bmatzelle/gow/wiki) is installed,
+the following commands can be executed in `cmd.exe`
+
+Create a config file
+    
+    echo '{"APP_FOO": "foo", "APP_BAR": "foo"}' > config.dev.json
+
+    # This env var will be removed,
+    # it is not listed in the config file 
+    set APP_VAR_NOT_IN_CONFIG_FILE="not_for_this_app"
+    
+    printenv | grep APP_
+    
+Print commands
+
+    set APP_DIR="%cd%"
+    %GOPATH%/bin/configu
+    
+Reset env
+
+    eval "$(${GOPATH}/bin/configu)"
+
+    printenv | grep APP_
+    
+Set a key value in `config.dev.json`
+
+    %GOPATH%/bin/configu -key APP_FOO -value xxx    
 
 
 ## TODO [Viper](https://github.com/spf13/viper) 

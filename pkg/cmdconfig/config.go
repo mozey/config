@@ -157,7 +157,7 @@ func CompareKeys(in *CmdIn) (buf *bytes.Buffer, err error) {
 	// Add unmatched keys to buffer
 	sort.Strings(unmatched)
 	for _, item := range unmatched {
-		buf.WriteString(fmt.Sprintf("%s\n", item))
+		buf.WriteString(fmt.Sprintf("%s%s", item, LineBreak))
 	}
 
 	return buf, nil
@@ -216,7 +216,7 @@ func GenerateHelper(in *CmdIn) (buf *bytes.Buffer, err error) {
 	err = t.Execute(buf, &data)
 	if err != nil {
 		b, _ := json.MarshalIndent(data, "", "    ")
-		fmt.Printf("template data \n %v", string(b))
+		fmt.Printf("template data %s %v", LineBreak, string(b))
 		return buf, err
 	}
 
@@ -283,7 +283,7 @@ func SetEnv(in *CmdIn) (buf *bytes.Buffer, err error) {
 	// Commands to set env
 	for _, key := range in.Config.Keys {
 		buf.WriteString(fmt.Sprintf(ExportFormat, key, in.Config.Map[key]))
-		buf.WriteString("\n")
+		buf.WriteString(LineBreak)
 		envKeys[key] = false
 	}
 
@@ -298,7 +298,7 @@ func SetEnv(in *CmdIn) (buf *bytes.Buffer, err error) {
 	for key, unset := range envKeys {
 		if unset {
 			buf.WriteString(fmt.Sprintf(UnsetFormat, key))
-			buf.WriteString("\n")
+			buf.WriteString(LineBreak)
 		}
 	}
 
@@ -311,7 +311,7 @@ func CSV(in *CmdIn) (buf *bytes.Buffer, err error) {
 	a := make([]string, len(in.Config.Keys))
 	for i, key := range in.Config.Keys {
 		value := in.Config.Map[key]
-		if strings.Contains(value, "\n") {
+		if strings.Contains(value, LineBreak) {
 			return buf, fmt.Errorf("values must not contain newlines")
 		}
 		if strings.Contains(value, ",") {
@@ -475,7 +475,7 @@ func Main() {
 	appDirKey := fmt.Sprintf("%s_DIR", *in.Prefix)
 	appDir := os.Getenv(appDirKey)
 	if appDir == "" {
-		fmt.Printf("%v env not set\n", appDirKey)
+		fmt.Printf("%v env not set%s", appDirKey, LineBreak)
 		os.Exit(1)
 	}
 	in.AppDir = appDir

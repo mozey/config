@@ -4,5 +4,6 @@
 // https://stackoverflow.com/a/19847868/639133
 package cmdconfig
 
+const LineBreak = "\n"
 const ExportFormat = "export %v=%v"
 const UnsetFormat = "unset %v"
