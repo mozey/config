@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"flag"
 	"fmt"
+	"github.com/pkg/errors"
 	"github.com/rs/zerolog/log"
 	"io"
 	"io/ioutil"
@@ -77,7 +78,7 @@ func GetPath(appDir string, env string) (string, error) {
 			return "", fmt.Errorf(
 				"app dir does not exist %v", appDir)
 		} else {
-			return "", err
+			return "", errors.WithStack(err)
 		}
 	}
 
@@ -113,7 +114,7 @@ func NewConfig(appDir string, env string, prefix string) (c *Config, err error) 
 	b, err := ioutil.ReadFile(configPath)
 	if err != nil {
 		//log.Debug().Msgf("reading config at path %v", configPath)
-		return c, err
+		return c, errors.WithStack(err)
 	}
 
 	c = &Config{}
@@ -123,7 +124,7 @@ func NewConfig(appDir string, env string, prefix string) (c *Config, err error) 
 	err = json.Unmarshal(b, &c.Map)
 	if err != nil {
 		//log.Debug().Msgf("unmarshal config at path %v", configPath)
-		return c, err
+		return c, errors.WithStack(err)
 	}
 
 	RefreshKeys(c)
@@ -213,7 +214,7 @@ func GenerateHelper(in *CmdIn) (buf *bytes.Buffer, err error) {
 	if err != nil {
 		b, _ := json.MarshalIndent(data, "", "    ")
 		fmt.Printf("template data %s %v", "\n", string(b))
-		return buf, err
+		return buf, errors.WithStack(err)
 	}
 
 	return buf, nil
@@ -235,11 +236,13 @@ func UpdateConfig(in *CmdIn) (buf *bytes.Buffer, err error) {
 		key = strings.ToUpper(key)
 
 		if !strings.HasPrefix(key, *in.Prefix) {
-			return buf, fmt.Errorf("key must strart with prefix %v", in.Prefix)
+			return buf, errors.WithStack(
+				fmt.Errorf("key must strart with prefix %v", in.Prefix))
 		}
 
 		if i > len(*in.Values)-1 {
-			return buf, fmt.Errorf("missing value for key %v", key)
+			return buf, errors.WithStack(
+				fmt.Errorf("missing value for key %v", key))
 		}
 		value := values[i]
 
@@ -252,7 +255,7 @@ func UpdateConfig(in *CmdIn) (buf *bytes.Buffer, err error) {
 	// Marshal config JSON
 	b, err := json.MarshalIndent(m, "", "    ")
 	if err != nil {
-		return buf, err
+		return buf, errors.WithStack(err)
 	}
 	buf.Write(b)
 
@@ -308,10 +311,12 @@ func CSV(in *CmdIn) (buf *bytes.Buffer, err error) {
 	for i, key := range in.Config.Keys {
 		value := in.Config.Map[key]
 		if strings.Contains(value, "\n") {
-			return buf, fmt.Errorf("values must not contain newlines")
+			return buf, errors.WithStack(
+				fmt.Errorf("values must not contain newlines"))
 		}
 		if strings.Contains(value, ",") {
-			return buf, fmt.Errorf("values must not contain commas")
+			return buf, errors.WithStack(
+				fmt.Errorf("values must not contain commas"))
 		}
 		a[i] = fmt.Sprintf("%v=%v", key, value)
 	}
@@ -319,7 +324,7 @@ func CSV(in *CmdIn) (buf *bytes.Buffer, err error) {
 	// Do not use encoding/csv, the writer will append a newline
 	_, err = buf.WriteString(strings.Join(a, ","))
 	if err != nil {
-		return buf, err
+		return buf, errors.WithStack(err)
 	}
 
 	return buf, nil
