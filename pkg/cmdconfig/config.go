@@ -9,7 +9,7 @@ import (
 	"io"
 	"io/ioutil"
 	"os"
-	"path"
+	"path/filepath"
 	"runtime"
 	"sort"
 	"strings"
@@ -90,7 +90,7 @@ func GetPath(appDir string, env string) (string, error) {
 		env = strings.Replace(env, samplePrefix, "", 1)
 	}
 
-	return path.Join(appDir, fmt.Sprintf("%vconfig.%v.json", sample, env)), nil
+	return filepath.Join(appDir, fmt.Sprintf("%vconfig.%v.json", sample, env)), nil
 }
 
 func RefreshKeys(c *Config) {
@@ -450,7 +450,7 @@ func (in *CmdIn) Process(out *CmdOut) {
 		} else {
 			// Write config helper
 			err = ioutil.WriteFile(
-				path.Join(in.AppDir, *in.Generate, "config.go"),
+				filepath.Join(in.AppDir, *in.Generate, "config.go"),
 				out.Buf.Bytes(),
 				0644)
 			if err != nil {

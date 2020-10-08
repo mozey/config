@@ -9,7 +9,8 @@ import (
 	"io/ioutil"
 	"math/rand"
 	"os"
-	"path"
+	"path/filepath"
+	"runtime"
 	"strings"
 	"testing"
 	"time"
@@ -39,7 +40,7 @@ func TestGetPath(t *testing.T) {
 	env := "foo"
 	p, err := GetPath(appDir, env)
 	require.NoError(t, err)
-	require.Equal(t, path.Join(appDir, fmt.Sprintf("config.%v.json", env)), p)
+	require.Equal(t, filepath.Join(appDir, fmt.Sprintf("config.%v.json", env)), p)
 }
 
 func TestCompareKeys(t *testing.T) {
@@ -53,12 +54,12 @@ func TestCompareKeys(t *testing.T) {
 	compare := "prod"
 
 	err = ioutil.WriteFile(
-		path.Join(tmp, fmt.Sprintf("config.%v.json", env)),
+		filepath.Join(tmp, fmt.Sprintf("config.%v.json", env)),
 		[]byte(`{"APP_ONE": "1", "APP_FOO": "foo"}`),
 		0644)
 	require.NoError(t, err)
 	err = ioutil.WriteFile(
-		path.Join(tmp, fmt.Sprintf("config.%v.json", compare)),
+		filepath.Join(tmp, fmt.Sprintf("config.%v.json", compare)),
 		[]byte(`{"APP_BAR": "bar", "APP_ONE": "1"}`),
 		0644)
 	require.NoError(t, err)
@@ -78,7 +79,9 @@ func TestCompareKeys(t *testing.T) {
 	require.NoError(t, err)
 	require.Equal(t, "compare", out.Cmd)
 	require.Equal(t, 1, out.ExitCode)
-	require.Equal(t, "APP_BAR\nAPP_FOO\n", out.Buf.String())
+	require.Equal(t,
+		fmt.Sprintf("APP_BAR%sAPP_FOO%s", LineBreak, LineBreak),
+		out.Buf.String())
 }
 
 func TestGenerateHelper(t *testing.T) {
@@ -91,7 +94,7 @@ func TestGenerateHelper(t *testing.T) {
 
 	// Path to generate config helper,
 	// existing file won't be overwritten
-	generate := path.Join(appDir, "pkg", "cmdconfig", "testdata")
+	generate := filepath.Join(appDir, "pkg", "cmdconfig", "testdata")
 
 	in := &CmdIn{}
 	in.AppDir = os.Getenv("APP_DIR")
@@ -145,7 +148,7 @@ func TestUpdateConfig(t *testing.T) {
 	env := "dev"
 
 	err = ioutil.WriteFile(
-		path.Join(tmp, fmt.Sprintf("config.%v.json", env)),
+		filepath.Join(tmp, fmt.Sprintf("config.%v.json", env)),
 		[]byte(`{"APP_FOO": "foo", "APP_BAR": "bar"}`),
 		0644)
 
@@ -190,7 +193,7 @@ func TestSetEnv(t *testing.T) {
 	env := "dev"
 
 	err = ioutil.WriteFile(
-		path.Join(tmp, fmt.Sprintf("config.%v.json", env)),
+		filepath.Join(tmp, fmt.Sprintf("config.%v.json", env)),
 		[]byte(`{"APP_BAR": "bar"}`),
 		0644)
 
@@ -210,9 +213,17 @@ func TestSetEnv(t *testing.T) {
 	buf, err := SetEnv(in)
 	require.NoError(t, err)
 	s := buf.String()
-	require.Contains(t, s, "export APP_BAR=bar\n")
-	require.Contains(t, s, "unset APP_FOO\n")
-	require.NotContains(t, s, "unset APP_DIR\n")
+
+	if runtime.GOOS == "windows" {
+		require.Contains(t, s, fmt.Sprintf("set APP_BAR=bar%s", LineBreak))
+		require.Contains(t, s, fmt.Sprintf("set APP_FOO=\"\"%s", LineBreak))
+		require.NotContains(t, s, fmt.Sprintf("set APP_DIR=\"\"%s", LineBreak))
+		
+	} else {
+		require.Contains(t, s, fmt.Sprintf("export APP_BAR=bar%s", LineBreak))
+		require.Contains(t, s, fmt.Sprintf("unset APP_FOO%s", LineBreak))
+		require.NotContains(t, s, fmt.Sprintf("unset APP_DIR%s", LineBreak))
+	}
 }
 
 func TestCSV(t *testing.T) {
@@ -225,7 +236,7 @@ func TestCSV(t *testing.T) {
 	env := "dev"
 
 	err = ioutil.WriteFile(
-		path.Join(tmp, fmt.Sprintf("config.%v.json", env)),
+		filepath.Join(tmp, fmt.Sprintf("config.%v.json", env)),
 		[]byte(`{"APP_FOO": "foo", "APP_BAR": "bar"}`),
 		0644)
 
