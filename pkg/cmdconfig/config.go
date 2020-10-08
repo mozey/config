@@ -10,7 +10,6 @@ import (
 	"io/ioutil"
 	"os"
 	"path/filepath"
-	"runtime"
 	"sort"
 	"strings"
 	"text/template"
@@ -185,9 +184,6 @@ func ToPrivate(str string) string {
 
 func GenerateHelper(in *CmdIn) (buf *bytes.Buffer, err error) {
 	// Create template
-	if *in.Prefix != "APP" {
-		configTemplate = strings.Replace(configTemplate, "APP", *in.Prefix, -1)
-	}
 	t := template.Must(template.New("configTemplate").Parse(configTemplate))
 
 	// Setup template data
@@ -197,10 +193,9 @@ func GenerateHelper(in *CmdIn) (buf *bytes.Buffer, err error) {
 	}
 	keys := make([]string, len(in.Config.Keys))
 	copy(keys, in.Config.Keys)
-	keys = append(keys, fmt.Sprintf("%v_DIR", *in.Prefix))
+	keys = append(keys, fmt.Sprintf("%vDIR", *in.Prefix))
 	for _, keyPrefix := range keys {
-		key := strings.Replace(
-			keyPrefix, fmt.Sprintf("%v_", *in.Prefix), "", 1)
+		key := strings.Replace(keyPrefix, *in.Prefix, "", 1)
 		key = strings.Replace(key, "_", " ", -1)
 		key = strings.ToLower(key)
 		key = strings.Replace(strings.Title(key), " ", "", -1)
@@ -290,7 +285,7 @@ func SetEnv(in *CmdIn) (buf *bytes.Buffer, err error) {
 
 	// Don't print command to unset APP_DIR
 	// https://github.com/mozey/config/issues/9
-	appDirKey := fmt.Sprintf("%v_DIR", *in.Prefix)
+	appDirKey := fmt.Sprintf("%vDIR", *in.Prefix)
 	if _, ok := envKeys[appDirKey]; ok {
 		envKeys[appDirKey] = false
 	}
@@ -392,7 +387,7 @@ func ParseFlags() *CmdIn {
 	in := CmdIn{}
 
 	// Flags
-	in.Prefix = flag.String("prefix", "APP", "Config key prefix")
+	in.Prefix = flag.String("prefix", "APP_", "Config key prefix")
 	in.Env = flag.String("env", "dev", "Config file to use")
 	// Default must be empty
 	in.Compare = flag.String("compare", "", "Compare config file keys")
@@ -412,12 +407,12 @@ func ParseFlags() *CmdIn {
 	return &in
 }
 
-func fixLineEndings(s string) string {
-	if runtime.GOOS == "windows" {
-		return strings.ReplaceAll(s, "\n", LineBreak)
-	}
-	return s
-}
+//func fixLineEndings(s string) string {
+//	if runtime.GOOS == "windows" {
+//		return strings.ReplaceAll(s, "\n", LineBreak)
+//	}
+//	return s
+//}
 
 func (in *CmdIn) Process(out *CmdOut) {
 	var err error
@@ -478,9 +473,14 @@ func Main() {
 
 	// Parse flags
 	in := ParseFlags()
+	prefix := *in.Prefix
+	if prefix[len(prefix)-1:] != "_" {
+		// Prefix must end with underscore
+		*in.Prefix = fmt.Sprintf("%s_", prefix)
+	}
 
 	// appDir is required
-	appDirKey := fmt.Sprintf("%s_DIR", *in.Prefix)
+	appDirKey := fmt.Sprintf("%sDIR", *in.Prefix)
 	appDir := os.Getenv(appDirKey)
 	if appDir == "" {
 		fmt.Printf("%v env not set%s", appDirKey, "\n")
@@ -522,6 +522,7 @@ import (
 	"fmt"
 	"io/ioutil"
 	"os"
+	"path/filepath"
 )
 
 {{range .Keys}}
@@ -583,8 +584,8 @@ func SetEnv(conf *Config) {
 
 // LoadFile sets the env from file and returns a new instance of Config
 func LoadFile(mode string) (conf *Config, err error) {
-	appDir := os.Getenv("APP_DIR")
-	p := fmt.Sprintf("%v/config.%v.json", appDir, mode)
+	appDir := os.Getenv("{{.Prefix}}DIR")
+	p := filepath.Join(appDir, fmt.Sprintf("config.%v.json", mode))
 	b, err := ioutil.ReadFile(p)
 	if err != nil {
 		return nil, err

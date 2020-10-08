@@ -1,4 +1,3 @@
-
 // Code generated with https://github.com/mozey/config DO NOT EDIT
 
 package config
@@ -8,39 +7,39 @@ import (
 	"fmt"
 	"io/ioutil"
 	"os"
+	"path/filepath"
 )
-
 
 // APP_BAR
 var bar string
+
 // APP_FOO
 var foo string
+
 // APP_DIR
 var dir string
 
-
 // Config fields correspond to config file keys less the prefix
 type Config struct {
-
 	bar string // APP_BAR
 	foo string // APP_FOO
 	dir string // APP_DIR
 }
 
-
 // Bar is APP_BAR
 func (c *Config) Bar() string {
 	return c.bar
 }
+
 // Foo is APP_FOO
 func (c *Config) Foo() string {
 	return c.foo
 }
+
 // Dir is APP_DIR
 func (c *Config) Dir() string {
 	return c.dir
 }
-
 
 // SetBar overrides the value of bar
 func (c *Config) SetBar(v string) {
@@ -56,7 +55,6 @@ func (c *Config) SetFoo(v string) {
 func (c *Config) SetDir(v string) {
 	c.dir = v
 }
-
 
 // New creates an instance of Config.
 // Build with ldflags to set the package vars.
@@ -91,7 +89,6 @@ func SetVars(conf *Config) {
 func SetEnv(conf *Config) {
 	var v string
 
-
 	v = os.Getenv("APP_BAR")
 	if v != "" {
 		conf.bar = v
@@ -112,7 +109,7 @@ func SetEnv(conf *Config) {
 // LoadFile sets the env from file and returns a new instance of Config
 func LoadFile(mode string) (conf *Config, err error) {
 	appDir := os.Getenv("APP_DIR")
-	p := fmt.Sprintf("%v/config.%v.json", appDir, mode)
+	p := filepath.Join(appDir, fmt.Sprintf("config.%v.json", mode))
 	b, err := ioutil.ReadFile(p)
 	if err != nil {
 		return nil, err

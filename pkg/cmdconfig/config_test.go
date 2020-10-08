@@ -66,7 +66,7 @@ func TestCompareKeys(t *testing.T) {
 
 	in := &CmdIn{}
 	in.AppDir = tmp
-	prefix := "APP"
+	prefix := "APP_"
 	in.Prefix = &prefix
 	in.Env = &env
 	in.Compare = &compare
@@ -80,7 +80,7 @@ func TestCompareKeys(t *testing.T) {
 	require.Equal(t, "compare", out.Cmd)
 	require.Equal(t, 1, out.ExitCode)
 	require.Equal(t,
-		fmt.Sprintf("APP_BAR%sAPP_FOO%s", LineBreak, LineBreak),
+		"APP_BAR\nAPP_FOO\n",
 		out.Buf.String())
 }
 
@@ -88,7 +88,7 @@ func TestGenerateHelper(t *testing.T) {
 	var err error
 
 	env := "dev"
-	prefix := "APP"
+	prefix := "APP_"
 	appDir := os.Getenv("APP_DIR")
 	require.NotEmpty(t, appDir)
 
@@ -113,19 +113,21 @@ func TestGenerateHelper(t *testing.T) {
 	require.Equal(t, 0, out.ExitCode)
 	generated := out.Buf.String()
 	//log.Debug().Msg(generated)
-	log.Debug().Msg("generated should match cmd/cmdconfig/testdata/config.go")
 
 	// Validate generated code
 	// https://dave.cheney.net/2016/05/10/test-fixtures-in-go
-	b, err := ioutil.ReadFile("testdata/config.go")
 	generated = strings.Replace(generated, " ", "", -1)
 	generated = strings.Replace(generated, "\t", "", -1)
 	generated = strings.Replace(generated, "\n", "", -1)
+
+	b, err := ioutil.ReadFile(filepath.Join("testdata", "config.go"))
 	ref := string(b)
 	ref = strings.Replace(ref, " ", "", -1)
 	ref = strings.Replace(ref, "\t", "", -1)
 	ref = strings.Replace(ref, "\n", "", -1)
-	require.Equal(t, ref, generated)
+
+	require.Equal(t, ref, generated,
+		"generated should match pkg/cmdconfig/testdata/config.go")
 
 	// Use config.dev.json from testdata
 	err = os.Setenv("APP_DIR", generate)
@@ -154,7 +156,7 @@ func TestUpdateConfig(t *testing.T) {
 
 	in := &CmdIn{}
 	in.AppDir = tmp
-	prefix := "APP"
+	prefix := "APP_"
 	in.Prefix = &prefix
 	in.Env = &env
 	keys := ArgMap{"APP_FOO", "APP_bar"}
@@ -202,7 +204,7 @@ func TestSetEnv(t *testing.T) {
 
 	in := &CmdIn{}
 	in.AppDir = tmp
-	prefix := "APP"
+	prefix := "APP_"
 	in.Prefix = &prefix
 	in.Env = &env
 	in.Config, err = NewConfig(in.AppDir, *in.Env, *in.Prefix)
@@ -218,7 +220,7 @@ func TestSetEnv(t *testing.T) {
 		require.Contains(t, s, fmt.Sprintf("set APP_BAR=bar%s", LineBreak))
 		require.Contains(t, s, fmt.Sprintf("set APP_FOO=\"\"%s", LineBreak))
 		require.NotContains(t, s, fmt.Sprintf("set APP_DIR=\"\"%s", LineBreak))
-		
+
 	} else {
 		require.Contains(t, s, fmt.Sprintf("export APP_BAR=bar%s", LineBreak))
 		require.Contains(t, s, fmt.Sprintf("unset APP_FOO%s", LineBreak))
@@ -242,7 +244,7 @@ func TestCSV(t *testing.T) {
 
 	in := &CmdIn{}
 	in.AppDir = tmp
-	prefix := "APP"
+	prefix := "APP_"
 	in.Prefix = &prefix
 	in.Env = &env
 	in.Compare = new(string)
