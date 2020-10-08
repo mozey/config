@@ -217,14 +217,14 @@ func TestSetEnv(t *testing.T) {
 	s := buf.String()
 
 	if runtime.GOOS == "windows" {
-		require.Contains(t, s, fmt.Sprintf("set APP_BAR=\"bar\"%s", LineBreak))
-		require.Contains(t, s, fmt.Sprintf("set APP_FOO=\"\"%s", LineBreak))
-		require.NotContains(t, s, fmt.Sprintf("set APP_DIR=\"\"%s", LineBreak))
+		require.Contains(t, s, "set APP_BAR=bar")
+		require.Contains(t, s, "set APP_FOO=\"\"")
+		require.NotContains(t, s, "set APP_DIR=\"\"")
 
 	} else {
-		require.Contains(t, s, fmt.Sprintf("export APP_BAR=bar%s", LineBreak))
-		require.Contains(t, s, fmt.Sprintf("unset APP_FOO%s", LineBreak))
-		require.NotContains(t, s, fmt.Sprintf("unset APP_DIR%s", LineBreak))
+		require.Contains(t, s, "export APP_BAR=bar")
+		require.Contains(t, s, "unset APP_FOO")
+		require.NotContains(t, s, "unset APP_DIR")
 	}
 }
 

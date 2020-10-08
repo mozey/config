@@ -203,7 +203,7 @@ Create a config file
     
 Print commands
 
-    set APP_DIR="%cd%"
+    set APP_DIR=%cd%
     %GOPATH%/bin/configu
     
 Reset env
@@ -218,7 +218,8 @@ Set a key value in `config.dev.json`
     
 Run the tests
 
-    set APP_DIR="%cd%" && gotest -v ./...    
+    set APP_DIR=%cd% 
+    gotest -v ./...    
 
 
 ## TODO [Viper](https://github.com/spf13/viper) 
