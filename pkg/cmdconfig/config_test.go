@@ -217,7 +217,7 @@ func TestSetEnv(t *testing.T) {
 	s := buf.String()
 
 	if runtime.GOOS == "windows" {
-		require.Contains(t, s, fmt.Sprintf("set APP_BAR=bar%s", LineBreak))
+		require.Contains(t, s, fmt.Sprintf("set APP_BAR=\"bar\"%s", LineBreak))
 		require.Contains(t, s, fmt.Sprintf("set APP_FOO=\"\"%s", LineBreak))
 		require.NotContains(t, s, fmt.Sprintf("set APP_DIR=\"\"%s", LineBreak))
 
