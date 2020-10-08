@@ -10,6 +10,7 @@ import (
 	"io/ioutil"
 	"os"
 	"path"
+	"runtime"
 	"sort"
 	"strings"
 	"text/template"
@@ -157,7 +158,7 @@ func CompareKeys(in *CmdIn) (buf *bytes.Buffer, err error) {
 	// Add unmatched keys to buffer
 	sort.Strings(unmatched)
 	for _, item := range unmatched {
-		buf.WriteString(fmt.Sprintf("%s%s", item, LineBreak))
+		buf.WriteString(fmt.Sprintf("%s%s", item, "\n"))
 	}
 
 	return buf, nil
@@ -216,7 +217,7 @@ func GenerateHelper(in *CmdIn) (buf *bytes.Buffer, err error) {
 	err = t.Execute(buf, &data)
 	if err != nil {
 		b, _ := json.MarshalIndent(data, "", "    ")
-		fmt.Printf("template data %s %v", LineBreak, string(b))
+		fmt.Printf("template data %s %v", "\n", string(b))
 		return buf, err
 	}
 
@@ -283,7 +284,7 @@ func SetEnv(in *CmdIn) (buf *bytes.Buffer, err error) {
 	// Commands to set env
 	for _, key := range in.Config.Keys {
 		buf.WriteString(fmt.Sprintf(ExportFormat, key, in.Config.Map[key]))
-		buf.WriteString(LineBreak)
+		buf.WriteString("\n")
 		envKeys[key] = false
 	}
 
@@ -298,7 +299,7 @@ func SetEnv(in *CmdIn) (buf *bytes.Buffer, err error) {
 	for key, unset := range envKeys {
 		if unset {
 			buf.WriteString(fmt.Sprintf(UnsetFormat, key))
-			buf.WriteString(LineBreak)
+			buf.WriteString("\n")
 		}
 	}
 
@@ -311,7 +312,7 @@ func CSV(in *CmdIn) (buf *bytes.Buffer, err error) {
 	a := make([]string, len(in.Config.Keys))
 	for i, key := range in.Config.Keys {
 		value := in.Config.Map[key]
-		if strings.Contains(value, LineBreak) {
+		if strings.Contains(value, "\n") {
 			return buf, fmt.Errorf("values must not contain newlines")
 		}
 		if strings.Contains(value, ",") {
@@ -411,6 +412,13 @@ func ParseFlags() *CmdIn {
 	return &in
 }
 
+func fixLineEndings(s string) string {
+	if runtime.GOOS == "windows" {
+		return strings.ReplaceAll(s, "\n", LineBreak)
+	}
+	return s
+}
+
 func (in *CmdIn) Process(out *CmdOut) {
 	var err error
 	switch out.Cmd {
@@ -475,7 +483,7 @@ func Main() {
 	appDirKey := fmt.Sprintf("%s_DIR", *in.Prefix)
 	appDir := os.Getenv(appDirKey)
 	if appDir == "" {
-		fmt.Printf("%v env not set%s", appDirKey, LineBreak)
+		fmt.Printf("%v env not set%s", appDirKey, "\n")
 		os.Exit(1)
 	}
 	in.AppDir = appDir

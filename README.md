@@ -147,7 +147,7 @@ All config env vars must have a prefix, the default is `APP_`
 Run the tests
 
     APP_DIR=$(pwd) gotest -v ./...
-
+    
     
 ## Debug    
 
@@ -214,7 +214,11 @@ Reset env
     
 Set a key value in `config.dev.json`
 
-    %GOPATH%/bin/configu -key APP_FOO -value xxx    
+    %GOPATH%/bin/configu -key APP_FOO -value xxx
+    
+Run the tests
+
+    set APP_DIR="%cd%" && gotest -v ./...    
 
 
 ## TODO [Viper](https://github.com/spf13/viper) 
