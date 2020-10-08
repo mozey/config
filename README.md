@@ -187,13 +187,13 @@ Install
 
     go get -u github.com/mozey/config/...
     
-Assuming [clink](https://mridgers.github.io/clink) and
-[gow](https://github.com/bmatzelle/gow/wiki) is installed,
-the following commands can be executed in `cmd.exe`
+Depends on [clink](https://mridgers.github.io/clink) and
+[gow](https://github.com/bmatzelle/gow/wiki), install them first.
+Then the following commands can be executed in `cmd.exe`
 
 Create a config file
     
-    echo '{"APP_FOO": "foo", "APP_BAR": "foo"}' > config.dev.json
+    echo {"APP_FOO": "foo", "APP_BAR": "foo"} > config.dev.json
 
     # This env var will be removed,
     # it is not listed in the config file 
