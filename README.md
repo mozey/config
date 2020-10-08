@@ -216,6 +216,13 @@ Set a key value in `config.dev.json`
 
     %GOPATH%/bin/configu -key APP_FOO -value xxx
     
+Toggle config, first update PATH to make `conf.bat` available 
+
+    Right click start > System > Advanced system settings > Advanced > Environment Variables... 
+    %GOPATH%/src/github.com/mozey/config
+    
+    conf.bat
+    
 Run the tests
 
     set APP_DIR=%cd% 
