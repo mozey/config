@@ -1,6 +1,7 @@
 package cmdconfig
 
 import (
+	"encoding/base64"
 	"encoding/json"
 	"fmt"
 	config "github.com/mozey/config/pkg/cmdconfig/testdata"
@@ -166,6 +167,8 @@ func TestUpdateConfig(t *testing.T) {
 	in.Compare = new(string)
 	in.Generate = new(string)
 	in.Config, err = NewConfig(in.AppDir, *in.Env, *in.Prefix)
+	flagBase64 := false
+	in.Base64 = &flagBase64
 	require.NoError(t, err)
 	csv := false
 	in.CSV = &csv
@@ -261,4 +264,47 @@ func TestCSV(t *testing.T) {
 
 	e := fmt.Sprintf("APP_BAR=bar,APP_FOO=foo")
 	require.Equal(t, e, out.Buf.String())
+}
+
+func TestBase64(t *testing.T) {
+	tmp, err := ioutil.TempDir("", "mozey-config")
+	require.NoError(t, err)
+	defer (func() {
+		_ = os.RemoveAll(tmp)
+	})()
+
+	env := "dev"
+
+	err = ioutil.WriteFile(
+		filepath.Join(tmp, fmt.Sprintf("config.%v.json", env)),
+		[]byte(`{"APP_FOO": "foo", "APP_BAR": "bar"}`),
+		0644)
+
+	in := &CmdIn{}
+	in.AppDir = tmp
+	prefix := "APP_"
+	in.Prefix = &prefix
+	in.Env = &env
+	compare := ""
+	in.Compare = &compare
+	generate := ""
+	in.Generate = &generate
+	flagBase64 := true
+	in.Base64 = &flagBase64
+	in.Config, err = NewConfig(in.AppDir, *in.Env, *in.Prefix)
+	csv := false
+	in.CSV = &csv
+	require.NoError(t, err)
+
+	out, err := Cmd(in)
+	require.NoError(t, err)
+	require.Equal(t, "base64", out.Cmd)
+	require.Equal(t, 0, out.ExitCode)
+
+	actual := out.Buf.String()
+	require.Equal(t, "eyJBUFBfQkFSIjoiYmFyIiwiQVBQX0ZPTyI6ImZvbyJ9", actual)
+
+	decoded, err := base64.StdEncoding.DecodeString(actual)
+	require.NoError(t, err)
+	require.Equal(t, `{"APP_BAR":"bar","APP_FOO":"foo"}`, string(decoded))
 }

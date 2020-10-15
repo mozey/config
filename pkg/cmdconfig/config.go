@@ -2,6 +2,7 @@ package cmdconfig
 
 import (
 	"bytes"
+	"encoding/base64"
 	"encoding/json"
 	"flag"
 	"fmt"
@@ -59,6 +60,8 @@ type CmdIn struct {
 	Config *Config
 	CSV    *bool
 	DryRun *bool
+	// Base64 encode config file
+	Base64 *bool
 }
 
 // CmdOut for use with Cmd function
@@ -171,9 +174,9 @@ type TemplateKey struct {
 }
 
 type TemplateData struct {
-	Prefix  string
+	Prefix string
 	AppDir string
-	Keys    []TemplateKey
+	Keys   []TemplateKey
 }
 
 func ToPrivate(str string) string {
@@ -189,7 +192,7 @@ func GenerateHelper(in *CmdIn) (buf *bytes.Buffer, err error) {
 
 	// Setup template data
 	data := TemplateData{
-		Prefix:  *in.Prefix,
+		Prefix: *in.Prefix,
 		AppDir: in.AppDir,
 	}
 	keys := make([]string, len(in.Config.Keys))
@@ -330,6 +333,16 @@ func CSV(in *CmdIn) (buf *bytes.Buffer, err error) {
 	return buf, nil
 }
 
+func Base64(in *CmdIn) (buf *bytes.Buffer, err error) {
+	buf = new(bytes.Buffer)
+
+	b, err := json.Marshal(in.Config.Map)
+	encoded := base64.StdEncoding.EncodeToString(b)
+	buf.Write([]byte(encoded))
+
+	return buf, nil
+}
+
 func Cmd(in *CmdIn) (out *CmdOut, err error) {
 	out = &CmdOut{}
 
@@ -363,6 +376,15 @@ func Cmd(in *CmdIn) (out *CmdOut, err error) {
 			return out, err
 		}
 		out.Cmd = "generate"
+		out.Buf = buf
+		return out, nil
+
+	} else if *in.Base64 {
+		buf, err := Base64(in)
+		if err != nil {
+			return out, err
+		}
+		out.Cmd = "base64"
 		out.Buf = buf
 		return out, nil
 
@@ -406,6 +428,8 @@ func ParseFlags() *CmdIn {
 		"csv", false, "Print env key=value CSV")
 	in.DryRun = flag.Bool(
 		"dry-run", false, "Don't write files, just print result")
+	in.Base64 = flag.Bool(
+		"base64", false, "Encode config file as base64 string")
 
 	flag.Parse()
 
@@ -464,6 +488,10 @@ func (in *CmdIn) Process(out *CmdOut) {
 		os.Exit(out.ExitCode)
 
 	case "csv":
+		fmt.Print(out.Buf.String())
+		os.Exit(out.ExitCode)
+
+	case "base64":
 		fmt.Print(out.Buf.String())
 		os.Exit(out.ExitCode)
 	}
