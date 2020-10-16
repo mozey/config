@@ -554,8 +554,10 @@ var configTemplate = `
 package config
 
 import (
+	"encoding/base64"
 	"encoding/json"
 	"fmt"
+	"github.com/pkg/errors"
 	"io/ioutil"
 	"os"
 	"path/filepath"
@@ -625,6 +627,30 @@ func (c *Config) GetMap() map[string]string {
 	m["{{.KeyPrefix}}"] = c.{{.KeyPrivate}}
 	{{end}}
 	return m
+}
+
+// SetEnvBase64 decodes and sets env from the given base64 string
+func SetEnvBase64(configBase64 string) (err error) {
+	// Decode base64
+	decoded, err := base64.StdEncoding.DecodeString(configBase64)
+	if err != nil {
+		return errors.WithStack(err)
+	}
+	// UnMarshall json
+	configMap := make(map[string]string)
+	err = json.Unmarshal(decoded, &configMap)
+	if err != nil {
+		return errors.WithStack(err)
+	}
+	// Set config
+	for key, value := range configMap {
+		err = os.Setenv(key, value)
+		if err != nil {
+			return errors.WithStack(err)
+		}
+	}
+
+	return nil
 }
 
 // LoadFile sets the env from file and returns a new instance of Config
