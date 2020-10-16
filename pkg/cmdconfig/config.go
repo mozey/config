@@ -337,6 +337,9 @@ func Base64(in *CmdIn) (buf *bytes.Buffer, err error) {
 	buf = new(bytes.Buffer)
 
 	b, err := json.Marshal(in.Config.Map)
+	if err != nil {
+		return buf, errors.WithStack(err)
+	}
 	encoded := base64.StdEncoding.EncodeToString(b)
 	buf.Write([]byte(encoded))
 
@@ -613,6 +616,15 @@ func SetEnv(conf *Config) {
 		conf.{{.KeyPrivate}} = v
 	}
 	{{end}}
+}
+
+// GetMap of all env vars
+func (c *Config) GetMap() map[string]string {
+	m := make(map[string]string)
+	{{range .Keys}}
+	m["{{.KeyPrefix}}"] = c.{{.KeyPrivate}}
+	{{end}}
+	return m
 }
 
 // LoadFile sets the env from file and returns a new instance of Config
