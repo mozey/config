@@ -464,7 +464,12 @@ func (in *CmdIn) Process(out *CmdOut) {
 				log.Fatal().Stack().Err(err).Msg("")
 			}
 			// Update config file
-			err = ioutil.WriteFile(configPath, out.Buf.Bytes(), 0)
+			info, err := os.Stat(configPath)
+			if err != nil {
+				log.Fatal().Stack().Err(err).Msg("")
+			}
+			perm := info.Mode() // Preserve existing mode
+			err = ioutil.WriteFile(configPath, out.Buf.Bytes(), perm)
 			if err != nil {
 				log.Fatal().Stack().Err(err).Msg("")
 			}
