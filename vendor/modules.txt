@@ -1,13 +1,14 @@
 # github.com/davecgh/go-spew v1.1.0
 github.com/davecgh/go-spew/spew
-# github.com/mozey/logutil v0.0.0-20200614125649-f2c2c4d6f582
+# github.com/mozey/logutil v0.0.0-20201020133158-b1ec1d809337
 ## explicit
 github.com/mozey/logutil
-# github.com/pkg/errors v0.8.1
+# github.com/pkg/errors v0.9.1
+## explicit
 github.com/pkg/errors
 # github.com/pmezard/go-difflib v1.0.0
 github.com/pmezard/go-difflib/difflib
-# github.com/rs/zerolog v1.19.0
+# github.com/rs/zerolog v1.20.0
 ## explicit
 github.com/rs/zerolog
 github.com/rs/zerolog/internal/cbor
