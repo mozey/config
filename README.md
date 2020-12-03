@@ -10,7 +10,11 @@ Manage env vars with a flat config.json file
 
 ## Quick start
 
-Install
+Install pre-compiled, download appropriate link below
+- [Linux 386](https://github.com/mozey/config/releases/download/v0.3.3/configu) 
+- [Windows 386](https://github.com/mozey/config/releases/download/v0.3.3/configu.exe)
+
+Install from source
 
     go get -u github.com/mozey/config/...
     
