@@ -167,16 +167,16 @@ func CompareKeys(in *CmdIn) (buf *bytes.Buffer, err error) {
 	return buf, nil
 }
 
-type TemplateKey struct {
+type GenerateKey struct {
 	KeyPrefix  string
 	KeyPrivate string
 	Key        string
 }
 
-type TemplateData struct {
+type GenerateData struct {
 	Prefix string
 	AppDir string
-	Keys   []TemplateKey
+	Keys   []GenerateKey
 }
 
 func ToPrivate(str string) string {
@@ -188,10 +188,10 @@ func ToPrivate(str string) string {
 
 func GenerateHelper(in *CmdIn) (buf *bytes.Buffer, err error) {
 	// Create template
-	t := template.Must(template.New("configTemplate").Parse(configTemplate))
+	t := template.Must(template.New("generatedConfig").Parse(generatedConfig))
 
 	// Setup template data
-	data := TemplateData{
+	data := GenerateData{
 		Prefix: *in.Prefix,
 		AppDir: in.AppDir,
 	}
@@ -203,7 +203,7 @@ func GenerateHelper(in *CmdIn) (buf *bytes.Buffer, err error) {
 		key = strings.Replace(key, "_", " ", -1)
 		key = strings.ToLower(key)
 		key = strings.Replace(strings.Title(key), " ", "", -1)
-		templateKey := TemplateKey{
+		templateKey := GenerateKey{
 			KeyPrefix:  keyPrefix,
 			KeyPrivate: ToPrivate(key),
 			Key:        key,
@@ -553,7 +553,7 @@ func Main() {
 
 // standard way to recognize machine-generated files
 // https://github.com/golang/go/issues/13560#issuecomment-276866852
-var configTemplate = `
+var generatedConfig = `
 // Code generated with https://github.com/mozey/config DO NOT EDIT
 
 package config
