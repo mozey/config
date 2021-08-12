@@ -327,6 +327,12 @@ func BenchmarkExecuteTemplate(b *testing.B) {
 	}
 }
 
+// BenchmarkExecuteTemplateSprintf demonstrates that using sprintf
+// is much faster than using text/template.
+// However, sprintf does not support named variables.
+// Changing the order of variables for TEMPLATE_* keys in config.ENV.json files
+// must not make ExecTemplate* methods return different values.
+// Therefore going with text/template for now.
 func BenchmarkExecuteTemplateSprintf(b *testing.B) {
 	templateFiz := "Fizz%s%s"
 	buz := "Buzz"
