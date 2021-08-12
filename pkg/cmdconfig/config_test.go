@@ -332,7 +332,10 @@ func BenchmarkExecuteTemplate(b *testing.B) {
 // However, sprintf does not support named variables.
 // Changing the order of variables for TEMPLATE_* keys in config.ENV.json files
 // must not make ExecTemplate* methods return different values.
-// Therefore going with text/template for now.
+// Therefore going with text/template,
+// avoid calling ExecTemplate* methods inside loops for now.
+// TODO Investigate regex replace performance vs text/template
+// https://github.com/mozey/config/issues/14
 func BenchmarkExecuteTemplateSprintf(b *testing.B) {
 	templateFiz := "Fizz%s%s"
 	buz := "Buzz"
