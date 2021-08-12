@@ -188,9 +188,6 @@ func ToPrivate(str string) string {
 }
 
 func GenerateHelper(in *CmdIn) (buf *bytes.Buffer, err error) {
-	// Create template
-	t := template.Must(template.New("generatedConfig").Parse(generatedConfig))
-
 	// Setup template data
 	data := GenerateData{
 		Prefix: *in.Prefix,
@@ -212,26 +209,66 @@ func GenerateHelper(in *CmdIn) (buf *bytes.Buffer, err error) {
 		data.Keys = append(data.Keys, templateKey)
 	}
 
-	// Execute the template
+	// Initialize return buf,
+	// for dry-run it will contain the generated text,
+	// otherwise it will contain paths to files that were written
 	buf = new(bytes.Buffer)
-	err = t.Execute(buf, &data)
+
+	// Generate config.go from template
+	t := template.Must(template.New("generateConfig").Parse(generateConfig))
+	generatedBuf := new(bytes.Buffer)
+	err = t.Execute(generatedBuf, &data)
 	if err != nil {
 		b, _ := json.MarshalIndent(data, "", "    ")
 		fmt.Printf("template data %s %v", "\n", string(b))
-		return buf, errors.WithStack(err)
+		return generatedBuf, errors.WithStack(err)
 	}
-
+	filePath := filepath.Join(in.AppDir, *in.Generate, "config.go")
 	if *in.DryRun {
-		fmt.Println("todo")
+		// Write file path and generated text to return buf
+		buf.WriteString("\n")
+		buf.WriteString(fmt.Sprintf("// FilePath: %s", filePath))
+		buf.Write(generatedBuf.Bytes())
 	} else {
-		// Write config helper
+		// Update config.go
 		err = ioutil.WriteFile(
-			filepath.Join(in.AppDir, *in.Generate, "config.go"),
-			buf.Bytes(),
+			filePath,
+			generatedBuf.Bytes(),
 			0644)
 		if err != nil {
 			log.Fatal().Stack().Err(err).Msg("")
 		}
+		// Write file path to return buf
+		buf.WriteString(filePath)
+	}
+
+	// Generate template.go from template
+	t = template.Must(template.New("generateTemplate").Parse(generateTemplate))
+	generatedBuf = new(bytes.Buffer)
+	err = t.Execute(generatedBuf, &data)
+	if err != nil {
+		b, _ := json.MarshalIndent(data, "", "    ")
+		fmt.Printf("template data %s %v", "\n", string(b))
+		return generatedBuf, errors.WithStack(err)
+	}
+	if *in.DryRun {
+		// Write file path and generated text to return buf
+		buf.WriteString("\n")
+		buf.WriteString(fmt.Sprintf("// FilePath: %s", filePath))
+		buf.Write(generatedBuf.Bytes())
+	} else {
+		// Write template.go
+		filePath := filepath.Join(in.AppDir, *in.Generate, "config.go")
+		err = ioutil.WriteFile(
+			filePath,
+			generatedBuf.Bytes(),
+			0644)
+		if err != nil {
+			log.Fatal().Stack().Err(err).Msg("")
+		}
+		// Write file path to return buf
+		buf.WriteString("\n")
+		buf.WriteString(filePath)
 	}
 
 	return buf, nil
@@ -558,9 +595,10 @@ func Main() {
 	in.Process(out)
 }
 
+// generateConfig text template to generate config.go file
 // standard way to recognize machine-generated files
 // https://github.com/golang/go/issues/13560#issuecomment-276866852
-var generatedConfig = `
+var generateConfig = `
 // Code generated with https://github.com/mozey/config DO NOT EDIT
 
 package config
@@ -683,4 +721,28 @@ func LoadFile(mode string) (conf *Config, err error) {
 	}
 	return New(), nil
 }
+`
+
+// generateTemplate text template to generate template.go file
+var generateTemplate = `
+// Code generated with https://github.com/mozey/config DO NOT EDIT
+
+package config
+
+import (
+	"bytes"
+	"text/template"
+)
+
+{{range .Keys}}
+// Set{{.Key}} overrides the value of {{.KeyPrivate}}
+func (c *Config) ExecTemplate{{.Key}}() string {
+	t := template.Must(template.New({{.KeyPrivate}}).Parse(c.{{.KeyPrivate}}))
+	b := bytes.Buffer{}
+	_ = t.Execute(&b, map[string]interface{}{
+		// TODO Use a map to lookup params for {{.KeyPrivate}}?
+	})
+	return b.String()
+}
+{{end}}
 `
