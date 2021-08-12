@@ -6,8 +6,6 @@ import (
 	"encoding/json"
 	"flag"
 	"fmt"
-	"github.com/pkg/errors"
-	"github.com/rs/zerolog/log"
 	"io"
 	"io/ioutil"
 	"os"
@@ -16,6 +14,9 @@ import (
 	"strings"
 	"text/template"
 	"unicode"
+
+	"github.com/pkg/errors"
+	"github.com/rs/zerolog/log"
 )
 
 // ArgMap for parsing flags with multiple keys
@@ -218,6 +219,19 @@ func GenerateHelper(in *CmdIn) (buf *bytes.Buffer, err error) {
 		b, _ := json.MarshalIndent(data, "", "    ")
 		fmt.Printf("template data %s %v", "\n", string(b))
 		return buf, errors.WithStack(err)
+	}
+
+	if *in.DryRun {
+		fmt.Println("todo")
+	} else {
+		// Write config helper
+		err = ioutil.WriteFile(
+			filepath.Join(in.AppDir, *in.Generate, "config.go"),
+			buf.Bytes(),
+			0644)
+		if err != nil {
+			log.Fatal().Stack().Err(err).Msg("")
+		}
 	}
 
 	return buf, nil
@@ -439,13 +453,6 @@ func ParseFlags() *CmdIn {
 	return &in
 }
 
-//func fixLineEndings(s string) string {
-//	if runtime.GOOS == "windows" {
-//		return strings.ReplaceAll(s, "\n", LineBreak)
-//	}
-//	return s
-//}
-
 func (in *CmdIn) Process(out *CmdOut) {
 	var err error
 	switch out.Cmd {
@@ -478,7 +485,6 @@ func (in *CmdIn) Process(out *CmdOut) {
 
 	case "generate":
 		if *in.DryRun {
-			fmt.Println(out.Buf.String())
 		} else {
 			// Write config helper
 			err = ioutil.WriteFile(
@@ -489,6 +495,7 @@ func (in *CmdIn) Process(out *CmdOut) {
 				log.Fatal().Stack().Err(err).Msg("")
 			}
 		}
+		fmt.Println(out.Buf.String())
 		os.Exit(out.ExitCode)
 
 	case "compare":

@@ -1,12 +1,10 @@
 package cmdconfig
 
 import (
+	"bytes"
 	"encoding/base64"
 	"encoding/json"
 	"fmt"
-	config "github.com/mozey/config/pkg/cmdconfig/testdata"
-	"github.com/rs/zerolog/log"
-	"github.com/stretchr/testify/require"
 	"io/ioutil"
 	"math/rand"
 	"os"
@@ -14,7 +12,12 @@ import (
 	"runtime"
 	"strings"
 	"testing"
+	"text/template"
 	"time"
+
+	config "github.com/mozey/config/pkg/cmdconfig/testdata"
+	"github.com/rs/zerolog/log"
+	"github.com/stretchr/testify/require"
 )
 
 func init() {
@@ -307,4 +310,28 @@ func TestBase64(t *testing.T) {
 	decoded, err := base64.StdEncoding.DecodeString(actual)
 	require.NoError(t, err)
 	require.Equal(t, `{"APP_BAR":"bar","APP_FOO":"foo"}`, string(decoded))
+}
+
+func BenchmarkExecuteTemplate(b *testing.B) {
+	templateFiz := "Fizz{{.Buz}}{{.Meh}}"
+	buz := "Buzz"
+	// WARNING 5055 ns/op if template is created inside loop
+	t := template.Must(template.New("templateFiz").Parse(templateFiz))
+	buf := bytes.Buffer{}
+	for i := 0; i < b.N; i++ {
+		// 539.0 ns/op
+		_ = t.Execute(&buf, map[string]interface{}{
+			"Buz": buz,
+			"Meh": "Meh",
+		})
+	}
+}
+
+func BenchmarkExecuteTemplateSprintf(b *testing.B) {
+	templateFiz := "Fizz%s%s"
+	buz := "Buzz"
+	for i := 0; i < b.N; i++ {
+		// 80.14 ns/op
+		_ = fmt.Sprintf(templateFiz, buz, "")
+	}
 }
