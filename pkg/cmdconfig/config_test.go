@@ -344,3 +344,8 @@ func BenchmarkExecuteTemplateSprintf(b *testing.B) {
 		_ = fmt.Sprintf(templateFiz, buz, "")
 	}
 }
+
+func TestGetTemplateParams(t *testing.T) {
+	params := GetTemplateParams("Fizz{{.Buz}}{{.Meh}}")
+	require.Equal(t, []string{"Buz", "Meh"}, params)
+}

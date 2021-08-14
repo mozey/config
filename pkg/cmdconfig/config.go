@@ -10,6 +10,7 @@ import (
 	"io/ioutil"
 	"os"
 	"path/filepath"
+	"regexp"
 	"sort"
 	"strings"
 	"text/template"
@@ -101,13 +102,12 @@ func RefreshKeys(c *Config) {
 	c.Keys = nil
 	// Set config keys
 	for k := range c.Map {
-		c.Keys = append(c.Keys, strings.ToUpper(k))
+		c.Keys = append(c.Keys, k)
 	}
 	// Sort keys
 	sort.Strings(c.Keys)
 }
 
-// TODO Remove prefix param?
 // NewConfig reads a config file and sets the key map
 func NewConfig(appDir string, env string, prefix string) (c *Config, err error) {
 	// Read config file
@@ -174,12 +174,126 @@ type GenerateKey struct {
 	Key        string
 }
 
-type GenerateData struct {
-	Prefix string
-	AppDir string
-	Keys   []GenerateKey
+type TemplateParam struct {
+	KeyPrivate string
+	Key        string
+	// Implicit is set if the param is also a config key
+	Implicit bool
 }
 
+// TemplateKey, e.g. APP_TEMPLATE_*
+type TemplateKey struct {
+	GenerateKey
+	ExplicitParams string
+	Params         []TemplateParam
+}
+
+type GenerateData struct {
+	Prefix       string
+	AppDir       string
+	Keys         []GenerateKey
+	TemplateKeys []TemplateKey
+	// KeyMap can be used to lookup an index in Keys given a key
+	KeyMap map[string]int
+}
+
+func NewGenerateData(in *CmdIn) (data GenerateData) {
+	// Init
+	data = GenerateData{
+		Prefix: *in.Prefix,
+		AppDir: in.AppDir,
+	}
+
+	// APP_DIR is usually not set in the config.json file
+	keys := make([]string, len(in.Config.Keys))
+	copy(keys, in.Config.Keys)
+	keys = append(keys, fmt.Sprintf("%vDIR", *in.Prefix))
+
+	data.Keys = make([]GenerateKey, len(keys))
+	data.TemplateKeys = make([]TemplateKey, 0)
+	data.KeyMap = make(map[string]int)
+
+	configFileKeys := make(map[string]bool)
+	templateKeys := make([]GenerateKey, 0)
+
+	// Prepare data for generating config helper files
+	for i, keyWithPrefix := range keys {
+		formattedKey := FormatKey(*in.Prefix, keyWithPrefix)
+		configFileKeys[formattedKey] = true
+		generateKey := GenerateKey{
+			KeyPrefix:  keyWithPrefix,
+			KeyPrivate: ToPrivate(formattedKey),
+			Key:        formattedKey,
+		}
+		data.Keys[i] = generateKey
+		data.KeyMap[formattedKey] = i
+
+		// If template key then append to templateKeys
+		if strings.Contains(keyWithPrefix, "_TEMPLATE") {
+			templateKeys = append(templateKeys, generateKey)
+		}
+	}
+
+	// Template keys are use to generate template.go
+	for _, generateKey := range templateKeys {
+		templateKey := TemplateKey{
+			GenerateKey: generateKey,
+		}
+		params := GetTemplateParams(in.Config.Map[generateKey.KeyPrefix])
+		explicitParams := make([]string, 0)
+		for _, param := range params {
+			keyPrivate := ToPrivate(param)
+			implicit := false
+			if _, ok := configFileKeys[param]; ok {
+				implicit = true
+			} else {
+				explicitParams = append(explicitParams, keyPrivate)
+			}
+			templateKey.Params = append(
+				templateKey.Params, TemplateParam{
+					KeyPrivate: keyPrivate,
+					Key:        param,
+					Implicit:   implicit,
+				})
+		}
+		templateKey.ExplicitParams =
+			strings.Join(explicitParams, ", ") + " string"
+		data.TemplateKeys = append(data.TemplateKeys, templateKey)
+	}
+
+	return data
+}
+
+// GetTemplateParams from template, e.g.
+// passing in "Fizz{{.Buz}}{{.Meh}}" should return ["Buz", "Meh"]
+func GetTemplateParams(value string) (params []string) {
+	params = make([]string, 0)
+	// Replace all mustache params with substring groups match
+	s := "\\{\\{\\.(\\w*)}}"
+	r, err := regexp.Compile(s)
+	if err != nil {
+		return params
+	}
+
+	matches := r.FindAllStringSubmatch(value, -1)
+	for _, match := range matches {
+		params = append(params, match[1])
+	}
+
+	return params
+}
+
+// FormatKey removes the prefix and converts env var to golang var,
+// e.g. APP_FOO_BAR becomes FooBar
+func FormatKey(prefix, keyWithPrefix string) string {
+	key := strings.Replace(keyWithPrefix, prefix, "", 1)
+	key = strings.Replace(key, "_", " ", -1)
+	key = strings.ToLower(key)
+	key = strings.Replace(strings.Title(key), " ", "", -1)
+	return key
+}
+
+// ToPrivate lowercases the first character of str
 func ToPrivate(str string) string {
 	for i, v := range str {
 		return string(unicode.ToLower(v)) + str[i+1:]
@@ -187,27 +301,12 @@ func ToPrivate(str string) string {
 	return ""
 }
 
+// GenerateHelper generates helper files, config.go, template.go, etc.
+// These files can then be included by users in their own projects
+// when they import the config package at the path as per the "generate" flag
 func GenerateHelper(in *CmdIn) (buf *bytes.Buffer, err error) {
-	// Setup template data
-	data := GenerateData{
-		Prefix: *in.Prefix,
-		AppDir: in.AppDir,
-	}
-	keys := make([]string, len(in.Config.Keys))
-	copy(keys, in.Config.Keys)
-	keys = append(keys, fmt.Sprintf("%vDIR", *in.Prefix))
-	for _, keyPrefix := range keys {
-		key := strings.Replace(keyPrefix, *in.Prefix, "", 1)
-		key = strings.Replace(key, "_", " ", -1)
-		key = strings.ToLower(key)
-		key = strings.Replace(strings.Title(key), " ", "", -1)
-		templateKey := GenerateKey{
-			KeyPrefix:  keyPrefix,
-			KeyPrivate: ToPrivate(key),
-			Key:        key,
-		}
-		data.Keys = append(data.Keys, templateKey)
-	}
+	// Generate data for executing template
+	data := NewGenerateData(in)
 
 	// Initialize return buf,
 	// for dry-run it will contain the generated text,
@@ -287,8 +386,6 @@ func UpdateConfig(in *CmdIn) (buf *bytes.Buffer, err error) {
 	keys := *in.Keys
 	values := *in.Values
 	for i, key := range keys {
-		key = strings.ToUpper(key)
-
 		if !strings.HasPrefix(key, *in.Prefix) {
 			return buf, errors.WithStack(
 				fmt.Errorf("key must strart with prefix %v", in.Prefix))
@@ -734,13 +831,14 @@ import (
 	"text/template"
 )
 
-{{range .Keys}}
-// Set{{.Key}} overrides the value of {{.KeyPrivate}}
-func (c *Config) ExecTemplate{{.Key}}() string {
+{{range .TemplateKeys}}
+// ExecTemplate{{.Key}} fills {{.KeyPrefix}} with the given params
+func (c *Config) ExecTemplate{{.Key}}({{.ExplicitParams}}) string {
 	t := template.Must(template.New({{.KeyPrivate}}).Parse(c.{{.KeyPrivate}}))
 	b := bytes.Buffer{}
 	_ = t.Execute(&b, map[string]interface{}{
-		// TODO Use a map to lookup params for {{.KeyPrivate}}?
+	{{range .Params}}
+		"{{.Key}}": {{if .Implicit}}c.{{end}}{{.KeyPrivate}},{{end}}
 	})
 	return b.String()
 }
