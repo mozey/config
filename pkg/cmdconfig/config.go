@@ -360,7 +360,6 @@ func GenerateHelper(in *CmdIn) (buf *bytes.Buffer, err error) {
 		buf.Write(generatedBuf.Bytes())
 	} else {
 		// Write template.go
-		filePath := filepath.Join(in.AppDir, *in.Generate, "config.go")
 		err = ioutil.WriteFile(
 			filePath,
 			generatedBuf.Bytes(),
