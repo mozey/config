@@ -256,8 +256,10 @@ func NewGenerateData(in *CmdIn) (data GenerateData) {
 					Implicit:   implicit,
 				})
 		}
-		templateKey.ExplicitParams =
-			strings.Join(explicitParams, ", ") + " string"
+		if len(explicitParams) > 0 {
+			templateKey.ExplicitParams =
+				strings.Join(explicitParams, ", ") + " string"
+		}
 		data.TemplateKeys = append(data.TemplateKeys, templateKey)
 	}
 
@@ -314,6 +316,7 @@ func GenerateHelper(in *CmdIn) (buf *bytes.Buffer, err error) {
 	buf = new(bytes.Buffer)
 
 	// Generate config.go from template
+	filePath := filepath.Join(in.AppDir, *in.Generate, "config.go")
 	t := template.Must(template.New("generateConfig").Parse(generateConfig))
 	generatedBuf := new(bytes.Buffer)
 	err = t.Execute(generatedBuf, &data)
@@ -322,7 +325,6 @@ func GenerateHelper(in *CmdIn) (buf *bytes.Buffer, err error) {
 		fmt.Printf("template data %s %v", "\n", string(b))
 		return generatedBuf, errors.WithStack(err)
 	}
-	filePath := filepath.Join(in.AppDir, *in.Generate, "config.go")
 	if *in.DryRun {
 		// Write file path and generated text to return buf
 		buf.WriteString("\n")
@@ -342,6 +344,7 @@ func GenerateHelper(in *CmdIn) (buf *bytes.Buffer, err error) {
 	}
 
 	// Generate template.go from template
+	filePath = filepath.Join(in.AppDir, *in.Generate, "template.go")
 	t = template.Must(template.New("generateTemplate").Parse(generateTemplate))
 	generatedBuf = new(bytes.Buffer)
 	err = t.Execute(generatedBuf, &data)
@@ -588,7 +591,6 @@ func ParseFlags() *CmdIn {
 }
 
 func (in *CmdIn) Process(out *CmdOut) {
-	var err error
 	switch out.Cmd {
 	case "set_env":
 		// Print set and unset env commands
@@ -618,17 +620,6 @@ func (in *CmdIn) Process(out *CmdOut) {
 		os.Exit(out.ExitCode)
 
 	case "generate":
-		if *in.DryRun {
-		} else {
-			// Write config helper
-			err = ioutil.WriteFile(
-				filepath.Join(in.AppDir, *in.Generate, "config.go"),
-				out.Buf.Bytes(),
-				0644)
-			if err != nil {
-				log.Fatal().Stack().Err(err).Msg("")
-			}
-		}
 		fmt.Println(out.Buf.String())
 		os.Exit(out.ExitCode)
 
@@ -832,9 +823,9 @@ import (
 )
 
 {{range .TemplateKeys}}
-// ExecTemplate{{.Key}} fills {{.KeyPrefix}} with the given params
-func (c *Config) ExecTemplate{{.Key}}({{.ExplicitParams}}) string {
-	t := template.Must(template.New({{.KeyPrivate}}).Parse(c.{{.KeyPrivate}}))
+// Exec{{.Key}} fills {{.KeyPrefix}} with the given params
+func (c *Config) Exec{{.Key}}({{.ExplicitParams}}) string {
+	t := template.Must(template.New("{{.KeyPrivate}}").Parse(c.{{.KeyPrivate}}))
 	b := bytes.Buffer{}
 	_ = t.Execute(&b, map[string]interface{}{
 	{{range .Params}}

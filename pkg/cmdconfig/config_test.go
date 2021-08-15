@@ -88,6 +88,13 @@ func TestCompareKeys(t *testing.T) {
 		out.Buf.String())
 }
 
+func StripGenerated(generated string) string {
+	generated = strings.Replace(generated, " ", "", -1)
+	generated = strings.Replace(generated, "\t", "", -1)
+	generated = strings.Replace(generated, "\n", "", -1)
+	return generated
+}
+
 func TestGenerateHelper(t *testing.T) {
 	var err error
 
@@ -96,15 +103,16 @@ func TestGenerateHelper(t *testing.T) {
 	appDir := os.Getenv("APP_DIR")
 	require.NotEmpty(t, appDir)
 
-	// Path to generate config helper,
-	// existing file won't be overwritten
-	generate := filepath.Join(appDir, "pkg", "cmdconfig", "testdata")
-
 	in := &CmdIn{}
-	in.AppDir = os.Getenv("APP_DIR")
+	in.AppDir = appDir
+	in.DryRun = new(bool)
+	*in.DryRun = true
 	in.Prefix = &prefix
 	in.Env = &env
 	in.Compare = new(string)
+	// Path to generate config helper,
+	// dry run is set so existing file won't be overwritten
+	generate := filepath.Join("pkg", "cmdconfig", "testdata")
 	in.Generate = &generate
 	in.Config, err = NewConfig("testdata", *in.Env, *in.Prefix)
 	require.NoError(t, err)
@@ -116,25 +124,34 @@ func TestGenerateHelper(t *testing.T) {
 	require.Equal(t, "generate", out.Cmd)
 	require.Equal(t, 0, out.ExitCode)
 	generated := out.Buf.String()
-	//log.Debug().Msg(generated)
 
-	// Validate generated code
-	// https://dave.cheney.net/2016/05/10/test-fixtures-in-go
-	generated = strings.Replace(generated, " ", "", -1)
-	generated = strings.Replace(generated, "\t", "", -1)
-	generated = strings.Replace(generated, "\n", "", -1)
+	files := strings.Split(generated, "// FilePath: ")
+	verified := 0
+	for _, file := range files {
+		index := strings.Index(file, "\n")
+		if index > 0 {
+			filePath := file[:index]
+			fileName := filepath.Base(filePath)
+			generated := file[index:]
+			generated = StripGenerated(generated)
+			// Test fixtures in Go
+			// https://dave.cheney.net/2016/05/10/test-fixtures-in-go
+			b, err := ioutil.ReadFile(filepath.Join("testdata", fileName))
+			require.NoError(t, err)
+			ref := string(b)
+			ref = StripGenerated(ref)
+			require.Equal(t, ref, generated,
+				fmt.Sprintf(
+					"generated should match pkg/cmdconfig/testdata/%s", fileName))
+			verified++
+		}
+	}
+	require.Equal(t, 2, verified,
+		"Unexpected number of files verified")
 
-	b, err := ioutil.ReadFile(filepath.Join("testdata", "config.go"))
-	ref := string(b)
-	ref = strings.Replace(ref, " ", "", -1)
-	ref = strings.Replace(ref, "\t", "", -1)
-	ref = strings.Replace(ref, "\n", "", -1)
-
-	require.Equal(t, ref, generated,
-		"generated should match pkg/cmdconfig/testdata/config.go")
-
-	// Use config.dev.json from testdata
-	err = os.Setenv("APP_DIR", generate)
+	// We've checked the generated code match the files in pkg/cmdconfig/testdata,
+	// now check the generated code works as expected...
+	err = os.Setenv("APP_DIR", filepath.Join(appDir, generate))
 	require.NoError(t, err)
 	c, err := config.LoadFile("dev")
 	require.NoError(t, err)
@@ -142,6 +159,8 @@ func TestGenerateHelper(t *testing.T) {
 	require.NoError(t, err)
 	require.Equal(t, "foo", c.Foo())
 	require.Equal(t, "bar", c.Bar())
+	require.Equal(t, "Buzz", c.Buz())
+	require.Equal(t, "FizzBuzz-FizzBuzz", c.ExecTemplateFiz("-FizzBuzz"))
 }
 
 func TestUpdateConfig(t *testing.T) {
@@ -157,6 +176,7 @@ func TestUpdateConfig(t *testing.T) {
 		filepath.Join(tmp, fmt.Sprintf("config.%v.json", env)),
 		[]byte(`{"APP_FOO": "foo", "APP_BAR": "bar"}`),
 		0644)
+	require.NoError(t, err)
 
 	in := &CmdIn{}
 	in.AppDir = tmp
@@ -187,8 +207,9 @@ func TestUpdateConfig(t *testing.T) {
 	require.NoError(t, err)
 	require.Empty(t, m["APP_DIR"], "APP_DIR must not be set in config file")
 	require.Equal(t, "update 1", m["APP_FOO"])
-	require.Empty(t, m["APP_bar"], "keys must be uppercase")
-	require.Equal(t, "update 2", m["APP_BAR"])
+	// 2021-08-15 Use keys exactly as per config file
+	// require.Empty(t, m["APP_bar"], "keys must be uppercase")
+	require.Equal(t, "update 2", m["APP_bar"])
 }
 
 func TestSetEnv(t *testing.T) {
@@ -204,6 +225,7 @@ func TestSetEnv(t *testing.T) {
 		filepath.Join(tmp, fmt.Sprintf("config.%v.json", env)),
 		[]byte(`{"APP_BAR": "bar"}`),
 		0644)
+	require.NoError(t, err)
 
 	err = os.Setenv("APP_FOO", "foo")
 	require.NoError(t, err)
@@ -247,6 +269,7 @@ func TestCSV(t *testing.T) {
 		filepath.Join(tmp, fmt.Sprintf("config.%v.json", env)),
 		[]byte(`{"APP_FOO": "foo", "APP_BAR": "bar"}`),
 		0644)
+	require.NoError(t, err)
 
 	in := &CmdIn{}
 	in.AppDir = tmp
@@ -265,8 +288,7 @@ func TestCSV(t *testing.T) {
 	require.Equal(t, "csv", out.Cmd)
 	require.Equal(t, 0, out.ExitCode)
 
-	e := fmt.Sprintf("APP_BAR=bar,APP_FOO=foo")
-	require.Equal(t, e, out.Buf.String())
+	require.Equal(t, "APP_BAR=bar,APP_FOO=foo", out.Buf.String())
 }
 
 func TestBase64(t *testing.T) {
@@ -282,6 +304,7 @@ func TestBase64(t *testing.T) {
 		filepath.Join(tmp, fmt.Sprintf("config.%v.json", env)),
 		[]byte(`{"APP_FOO": "foo", "APP_BAR": "bar"}`),
 		0644)
+	require.NoError(t, err)
 
 	in := &CmdIn{}
 	in.AppDir = tmp

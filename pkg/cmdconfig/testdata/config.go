@@ -198,7 +198,6 @@ func SetEnvBase64(configBase64 string) (err error) {
 // LoadFile sets the env from file and returns a new instance of Config
 func LoadFile(mode string) (conf *Config, err error) {
 	appDir := os.Getenv("APP_DIR")
-	fmt.Println("appDir ", appDir)
 	p := filepath.Join(appDir, fmt.Sprintf("config.%v.json", mode))
 	b, err := ioutil.ReadFile(p)
 	if err != nil {
