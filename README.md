@@ -1,11 +1,15 @@
 # config
 
-Manage env vars with a flat config.json file
+Manage env vars with a flat `config.ENV.json` file,
+with default `ENV=dev`
 
 `mozey/config` has the following components
 - Command to manage the env: `configu`
 - Bash function to toggle env: `conf`
 - Generate a package (e.g. `pkg/config/config.go`) to include in your module
+
+Apps must not set their own config, instead read it from the env.
+Env vars must be set in the parent process.
 
 
 ## Quick start
@@ -115,9 +119,10 @@ Export `prod` env
 
     printenv | sort | grep -E "APP_"
 
-All config files must have the same keys,
-if a key is n/a in for an env then set the value to an empty string.
-Compare config files and print un-matched keys
+### Compare config files and print un-matched keys
+
+It's advisable for all config files to have the same keys,
+if a key does not apply to an env then set the value to an empty string.
 
     configu -env dev -compare prod
 
@@ -239,13 +244,15 @@ Run the tests
     gotest -v ./...
 
 
-## TODO [Viper](https://github.com/spf13/viper)
+## Note re. [Viper](https://github.com/spf13/viper)
 
 Does it make sense to build this on top of, or use Viper instead?
 
 How would the config package be generated?
 
-Keep in mind that env must be set in the parent process.
-E.g. apps should not set their own config, they must read it from the env
+Keep in mind that env must be set in the parent process,
+i.e. apps should not set their own config, they must read it from the env.
+See [12factor.net/config](https://12factor.net/config), and 
+[Notes re. twelve factor apps](https://github.com/mozey/config/issues/5)
 
 
