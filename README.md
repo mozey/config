@@ -244,14 +244,14 @@ Run the tests
     gotest -v ./...
 
 
-## Note re. [Viper](https://github.com/spf13/viper)
+## Architecture notes
 
-Does it make sense to build this on top of, or use Viper instead?
-
+Does it make sense to build this on top of, 
+or use [Viper](https://github.com/spf13/viper) instead.
 How would the config package be generated?
 
 Keep in mind that env must be set in the parent process,
-i.e. apps should not set their own config, they must read it from the env.
+i.e. **apps should not set their own config, they must read it from the env.**
 See [12factor.net/config](https://12factor.net/config), and 
 [Notes re. twelve factor apps](https://github.com/mozey/config/issues/5)
 
