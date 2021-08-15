@@ -6,16 +6,18 @@ import (
 	"encoding/json"
 	"flag"
 	"fmt"
-	"github.com/pkg/errors"
-	"github.com/rs/zerolog/log"
 	"io"
 	"io/ioutil"
 	"os"
 	"path/filepath"
+	"regexp"
 	"sort"
 	"strings"
 	"text/template"
 	"unicode"
+
+	"github.com/pkg/errors"
+	"github.com/rs/zerolog/log"
 )
 
 // ArgMap for parsing flags with multiple keys
@@ -100,13 +102,12 @@ func RefreshKeys(c *Config) {
 	c.Keys = nil
 	// Set config keys
 	for k := range c.Map {
-		c.Keys = append(c.Keys, strings.ToUpper(k))
+		c.Keys = append(c.Keys, k)
 	}
 	// Sort keys
 	sort.Strings(c.Keys)
 }
 
-// TODO Remove prefix param?
 // NewConfig reads a config file and sets the key map
 func NewConfig(appDir string, env string, prefix string) (c *Config, err error) {
 	// Read config file
@@ -167,18 +168,134 @@ func CompareKeys(in *CmdIn) (buf *bytes.Buffer, err error) {
 	return buf, nil
 }
 
-type TemplateKey struct {
+type GenerateKey struct {
 	KeyPrefix  string
 	KeyPrivate string
 	Key        string
 }
 
-type TemplateData struct {
-	Prefix string
-	AppDir string
-	Keys   []TemplateKey
+type TemplateParam struct {
+	KeyPrivate string
+	Key        string
+	// Implicit is set if the param is also a config key
+	Implicit bool
 }
 
+// TemplateKey, e.g. APP_TEMPLATE_*
+type TemplateKey struct {
+	GenerateKey
+	ExplicitParams string
+	Params         []TemplateParam
+}
+
+type GenerateData struct {
+	Prefix       string
+	AppDir       string
+	Keys         []GenerateKey
+	TemplateKeys []TemplateKey
+	// KeyMap can be used to lookup an index in Keys given a key
+	KeyMap map[string]int
+}
+
+func NewGenerateData(in *CmdIn) (data GenerateData) {
+	// Init
+	data = GenerateData{
+		Prefix: *in.Prefix,
+		AppDir: in.AppDir,
+	}
+
+	// APP_DIR is usually not set in the config.json file
+	keys := make([]string, len(in.Config.Keys))
+	copy(keys, in.Config.Keys)
+	keys = append(keys, fmt.Sprintf("%vDIR", *in.Prefix))
+
+	data.Keys = make([]GenerateKey, len(keys))
+	data.TemplateKeys = make([]TemplateKey, 0)
+	data.KeyMap = make(map[string]int)
+
+	configFileKeys := make(map[string]bool)
+	templateKeys := make([]GenerateKey, 0)
+
+	// Prepare data for generating config helper files
+	for i, keyWithPrefix := range keys {
+		formattedKey := FormatKey(*in.Prefix, keyWithPrefix)
+		configFileKeys[formattedKey] = true
+		generateKey := GenerateKey{
+			KeyPrefix:  keyWithPrefix,
+			KeyPrivate: ToPrivate(formattedKey),
+			Key:        formattedKey,
+		}
+		data.Keys[i] = generateKey
+		data.KeyMap[formattedKey] = i
+
+		// If template key then append to templateKeys
+		if strings.Contains(keyWithPrefix, "_TEMPLATE") {
+			templateKeys = append(templateKeys, generateKey)
+		}
+	}
+
+	// Template keys are use to generate template.go
+	for _, generateKey := range templateKeys {
+		templateKey := TemplateKey{
+			GenerateKey: generateKey,
+		}
+		params := GetTemplateParams(in.Config.Map[generateKey.KeyPrefix])
+		explicitParams := make([]string, 0)
+		for _, param := range params {
+			keyPrivate := ToPrivate(param)
+			implicit := false
+			if _, ok := configFileKeys[param]; ok {
+				implicit = true
+			} else {
+				explicitParams = append(explicitParams, keyPrivate)
+			}
+			templateKey.Params = append(
+				templateKey.Params, TemplateParam{
+					KeyPrivate: keyPrivate,
+					Key:        param,
+					Implicit:   implicit,
+				})
+		}
+		if len(explicitParams) > 0 {
+			templateKey.ExplicitParams =
+				strings.Join(explicitParams, ", ") + " string"
+		}
+		data.TemplateKeys = append(data.TemplateKeys, templateKey)
+	}
+
+	return data
+}
+
+// GetTemplateParams from template, e.g.
+// passing in "Fizz{{.Buz}}{{.Meh}}" should return ["Buz", "Meh"]
+func GetTemplateParams(value string) (params []string) {
+	params = make([]string, 0)
+	// Replace all mustache params with substring groups match
+	s := "\\{\\{\\.(\\w*)}}"
+	r, err := regexp.Compile(s)
+	if err != nil {
+		return params
+	}
+
+	matches := r.FindAllStringSubmatch(value, -1)
+	for _, match := range matches {
+		params = append(params, match[1])
+	}
+
+	return params
+}
+
+// FormatKey removes the prefix and converts env var to golang var,
+// e.g. APP_FOO_BAR becomes FooBar
+func FormatKey(prefix, keyWithPrefix string) string {
+	key := strings.Replace(keyWithPrefix, prefix, "", 1)
+	key = strings.Replace(key, "_", " ", -1)
+	key = strings.ToLower(key)
+	key = strings.Replace(strings.Title(key), " ", "", -1)
+	return key
+}
+
+// ToPrivate lowercases the first character of str
 func ToPrivate(str string) string {
 	for i, v := range str {
 		return string(unicode.ToLower(v)) + str[i+1:]
@@ -186,38 +303,73 @@ func ToPrivate(str string) string {
 	return ""
 }
 
+// GenerateHelper generates helper files, config.go, template.go, etc.
+// These files can then be included by users in their own projects
+// when they import the config package at the path as per the "generate" flag
 func GenerateHelper(in *CmdIn) (buf *bytes.Buffer, err error) {
-	// Create template
-	t := template.Must(template.New("configTemplate").Parse(configTemplate))
+	// Generate data for executing template
+	data := NewGenerateData(in)
 
-	// Setup template data
-	data := TemplateData{
-		Prefix: *in.Prefix,
-		AppDir: in.AppDir,
-	}
-	keys := make([]string, len(in.Config.Keys))
-	copy(keys, in.Config.Keys)
-	keys = append(keys, fmt.Sprintf("%vDIR", *in.Prefix))
-	for _, keyPrefix := range keys {
-		key := strings.Replace(keyPrefix, *in.Prefix, "", 1)
-		key = strings.Replace(key, "_", " ", -1)
-		key = strings.ToLower(key)
-		key = strings.Replace(strings.Title(key), " ", "", -1)
-		templateKey := TemplateKey{
-			KeyPrefix:  keyPrefix,
-			KeyPrivate: ToPrivate(key),
-			Key:        key,
-		}
-		data.Keys = append(data.Keys, templateKey)
-	}
-
-	// Execute the template
+	// Initialize return buf,
+	// for dry-run it will contain the generated text,
+	// otherwise it will contain paths to files that were written
 	buf = new(bytes.Buffer)
-	err = t.Execute(buf, &data)
+
+	// Generate config.go from template
+	filePath := filepath.Join(in.AppDir, *in.Generate, "config.go")
+	t := template.Must(template.New("generateConfig").Parse(generateConfig))
+	generatedBuf := new(bytes.Buffer)
+	err = t.Execute(generatedBuf, &data)
 	if err != nil {
 		b, _ := json.MarshalIndent(data, "", "    ")
 		fmt.Printf("template data %s %v", "\n", string(b))
-		return buf, errors.WithStack(err)
+		return generatedBuf, errors.WithStack(err)
+	}
+	if *in.DryRun {
+		// Write file path and generated text to return buf
+		buf.WriteString("\n")
+		buf.WriteString(fmt.Sprintf("// FilePath: %s", filePath))
+		buf.Write(generatedBuf.Bytes())
+	} else {
+		// Update config.go
+		err = ioutil.WriteFile(
+			filePath,
+			generatedBuf.Bytes(),
+			0644)
+		if err != nil {
+			log.Fatal().Stack().Err(err).Msg("")
+		}
+		// Write file path to return buf
+		buf.WriteString(filePath)
+	}
+
+	// Generate template.go from template
+	filePath = filepath.Join(in.AppDir, *in.Generate, "template.go")
+	t = template.Must(template.New("generateTemplate").Parse(generateTemplate))
+	generatedBuf = new(bytes.Buffer)
+	err = t.Execute(generatedBuf, &data)
+	if err != nil {
+		b, _ := json.MarshalIndent(data, "", "    ")
+		fmt.Printf("template data %s %v", "\n", string(b))
+		return generatedBuf, errors.WithStack(err)
+	}
+	if *in.DryRun {
+		// Write file path and generated text to return buf
+		buf.WriteString("\n")
+		buf.WriteString(fmt.Sprintf("// FilePath: %s", filePath))
+		buf.Write(generatedBuf.Bytes())
+	} else {
+		// Write template.go
+		err = ioutil.WriteFile(
+			filePath,
+			generatedBuf.Bytes(),
+			0644)
+		if err != nil {
+			log.Fatal().Stack().Err(err).Msg("")
+		}
+		// Write file path to return buf
+		buf.WriteString("\n")
+		buf.WriteString(filePath)
 	}
 
 	return buf, nil
@@ -236,8 +388,6 @@ func UpdateConfig(in *CmdIn) (buf *bytes.Buffer, err error) {
 	keys := *in.Keys
 	values := *in.Values
 	for i, key := range keys {
-		key = strings.ToUpper(key)
-
 		if !strings.HasPrefix(key, *in.Prefix) {
 			return buf, errors.WithStack(
 				fmt.Errorf("key must strart with prefix %v", in.Prefix))
@@ -439,15 +589,7 @@ func ParseFlags() *CmdIn {
 	return &in
 }
 
-//func fixLineEndings(s string) string {
-//	if runtime.GOOS == "windows" {
-//		return strings.ReplaceAll(s, "\n", LineBreak)
-//	}
-//	return s
-//}
-
 func (in *CmdIn) Process(out *CmdOut) {
-	var err error
 	switch out.Cmd {
 	case "set_env":
 		// Print set and unset env commands
@@ -477,18 +619,7 @@ func (in *CmdIn) Process(out *CmdOut) {
 		os.Exit(out.ExitCode)
 
 	case "generate":
-		if *in.DryRun {
-			fmt.Println(out.Buf.String())
-		} else {
-			// Write config helper
-			err = ioutil.WriteFile(
-				filepath.Join(in.AppDir, *in.Generate, "config.go"),
-				out.Buf.Bytes(),
-				0644)
-			if err != nil {
-				log.Fatal().Stack().Err(err).Msg("")
-			}
-		}
+		fmt.Println(out.Buf.String())
 		os.Exit(out.ExitCode)
 
 	case "compare":
@@ -551,9 +682,10 @@ func Main() {
 	in.Process(out)
 }
 
+// generateConfig text template to generate config.go file
 // standard way to recognize machine-generated files
 // https://github.com/golang/go/issues/13560#issuecomment-276866852
-var configTemplate = `
+var generateConfig = `
 // Code generated with https://github.com/mozey/config DO NOT EDIT
 
 package config
@@ -676,4 +808,29 @@ func LoadFile(mode string) (conf *Config, err error) {
 	}
 	return New(), nil
 }
+`
+
+// generateTemplate text template to generate template.go file
+var generateTemplate = `
+// Code generated with https://github.com/mozey/config DO NOT EDIT
+
+package config
+
+import (
+	"bytes"
+	"text/template"
+)
+
+{{range .TemplateKeys}}
+// Exec{{.Key}} fills {{.KeyPrefix}} with the given params
+func (c *Config) Exec{{.Key}}({{.ExplicitParams}}) string {
+	t := template.Must(template.New("{{.KeyPrivate}}").Parse(c.{{.KeyPrivate}}))
+	b := bytes.Buffer{}
+	_ = t.Execute(&b, map[string]interface{}{
+	{{range .Params}}
+		"{{.Key}}": {{if .Implicit}}c.{{end}}{{.KeyPrivate}},{{end}}
+	})
+	return b.String()
+}
+{{end}}
 `

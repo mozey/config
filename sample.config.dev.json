@@ -1,5 +1,6 @@
 {
-    "APP_DEBUG": "true",
     "APP_BAR": "bar",
-    "APP_FOO": "foo"
+    "APP_FOO": "foo",
+    "APP_BUZ": "Buzz",
+    "APP_TEMPLATE_FIZ": "Fizz{{.Buz}}{{.Meh}}"
 }
