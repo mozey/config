@@ -1,7 +1,7 @@
 # config
 
 Manage env vars with a flat `config.ENV.json` file,
-with default `ENV=dev`
+default `ENV=dev`
 
 `mozey/config` has the following components
 - Command to manage the env: `configu`
@@ -254,5 +254,21 @@ Keep in mind that env must be set in the parent process,
 i.e. **apps should not set their own config, they must read it from the env.**
 See [12factor.net/config](https://12factor.net/config), and 
 [Notes re. twelve factor apps](https://github.com/mozey/config/issues/5)
+
+
+## Key naming rules
+
+All keys must start with the **same prefix**.
+
+Keys are case sensitive,
+and it's advised to make keys **all uppercase**.
+
+Use **SNAKE_CASE**.
+
+Assuming the default key prefix `APP_`,
+keys **must not start with**
+- `APP_SET_`
+- `APP_FN_`
+- `APP_EXEC_TEMPLATE_`
 
 
