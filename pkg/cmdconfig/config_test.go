@@ -15,6 +15,9 @@ import (
 	"text/template"
 	"time"
 
+	// NOTE TestGenerateHelper checks that the code in pkg/cmdconfig/testdata
+	// matches wat is actually generated. Therefore, this package can be
+	// imported to test the generated code works as expected
 	config "github.com/mozey/config/pkg/cmdconfig/testdata"
 	"github.com/rs/zerolog/log"
 	"github.com/stretchr/testify/require"
@@ -333,6 +336,65 @@ func TestBase64(t *testing.T) {
 	decoded, err := base64.StdEncoding.DecodeString(actual)
 	require.NoError(t, err)
 	require.Equal(t, `{"APP_BAR":"bar","APP_FOO":"foo"}`, string(decoded))
+}
+
+func TestTypeConversionFns(t *testing.T) {
+	c := config.New()
+
+	// bool
+	c.SetBar("1")
+	b, err := c.FnBar().Bool()
+	require.NoError(t, err)
+	require.True(t, b)
+	c.SetBar("true")
+	b, err = c.FnBar().Bool()
+	require.NoError(t, err)
+	require.True(t, b)
+	c.SetBar("TrUe")
+	b, err = c.FnBar().Bool()
+	require.NoError(t, err)
+	require.True(t, b)
+
+	c.SetBar("0")
+	b, err = c.FnBar().Bool()
+	require.NoError(t, err)
+	require.False(t, b)
+	c.SetBar("false")
+	b, err = c.FnBar().Bool()
+	require.NoError(t, err)
+	require.False(t, b)
+
+	c.SetBar("xxx")
+	b, err = c.FnBar().Bool()
+	require.Error(t, err)
+	require.False(t, b)
+
+	// float64
+	c.SetBar("123.45")
+	f, err := c.FnBar().Float64()
+	require.NoError(t, err)
+	expectedF := float64(123.45)
+	require.Equal(t, expectedF, f)
+	c.SetBar("xxx")
+	f, err = c.FnBar().Float64()
+	require.Error(t, err)
+	require.Equal(t, float64(0), f)
+
+	// int64
+	c.SetBar("123")
+	i, err := c.FnBar().Int64()
+	require.NoError(t, err)
+	expectedI := int64(123)
+	require.Equal(t, expectedI, i)
+	c.SetBar("xxx")
+	i, err = c.FnBar().Int64()
+	require.Error(t, err)
+	require.Equal(t, int64(0), i)
+
+	// string
+	s := "This is a string"
+	c.SetBar(s)
+	require.Equal(t, s, c.FnBar().String())
 }
 
 func BenchmarkExecuteTemplate(b *testing.B) {

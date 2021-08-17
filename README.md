@@ -256,7 +256,7 @@ See [12factor.net/config](https://12factor.net/config), and
 [Notes re. twelve factor apps](https://github.com/mozey/config/issues/5)
 
 
-## Key naming rules
+## Key naming conventions
 
 All keys must start with the **same prefix**.
 
@@ -266,9 +266,9 @@ and it's advised to make keys **all uppercase**.
 Use **SNAKE_CASE**.
 
 Assuming the default key prefix `APP_`,
-keys **must not start with**
-- `APP_SET_`
-- `APP_FN_`
+**avoid keys that start with**
 - `APP_EXEC_TEMPLATE_`
+- `APP_FN_`
+- `APP_SET_`
 
 
