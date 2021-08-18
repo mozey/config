@@ -73,14 +73,11 @@ func TestCompareKeys(t *testing.T) {
 
 	in := &CmdIn{}
 	in.AppDir = tmp
-	prefix := "APP_"
-	in.Prefix = &prefix
-	in.Env = &env
-	in.Compare = &compare
-	in.Config, err = NewConfig(in.AppDir, *in.Env, *in.Prefix)
+	in.Prefix = "APP_"
+	in.Env = env
+	in.Compare = compare
+	in.Config, err = NewConfig(in.AppDir, in.Env, in.Prefix)
 	require.NoError(t, err)
-	csv := false
-	in.CSV = &csv
 
 	out, err := Cmd(in)
 	require.NoError(t, err)
@@ -101,26 +98,19 @@ func StripGenerated(generated string) string {
 func TestGenerateHelper(t *testing.T) {
 	var err error
 
-	env := "dev"
-	prefix := "APP_"
 	appDir := os.Getenv("APP_DIR")
 	require.NotEmpty(t, appDir)
 
 	in := &CmdIn{}
 	in.AppDir = appDir
-	in.DryRun = new(bool)
-	*in.DryRun = true
-	in.Prefix = &prefix
-	in.Env = &env
-	in.Compare = new(string)
+	in.DryRun = true
+	in.Prefix = "APP_"
+	in.Env = "dev"
 	// Path to generate config helper,
 	// dry run is set so existing file won't be overwritten
-	generate := filepath.Join("pkg", "cmdconfig", "testdata")
-	in.Generate = &generate
-	in.Config, err = NewConfig("testdata", *in.Env, *in.Prefix)
+	in.Generate = filepath.Join("pkg", "cmdconfig", "testdata")
+	in.Config, err = NewConfig("testdata", in.Env, in.Prefix)
 	require.NoError(t, err)
-	csv := false
-	in.CSV = &csv
 
 	out, err := Cmd(in)
 	require.NoError(t, err)
@@ -154,7 +144,7 @@ func TestGenerateHelper(t *testing.T) {
 
 	// We've checked the generated code match the files in pkg/cmdconfig/testdata,
 	// now check the generated code works as expected...
-	err = os.Setenv("APP_DIR", filepath.Join(appDir, generate))
+	err = os.Setenv("APP_DIR", filepath.Join(appDir, in.Generate))
 	require.NoError(t, err)
 	c, err := config.LoadFile("dev")
 	require.NoError(t, err)
@@ -183,21 +173,12 @@ func TestUpdateConfig(t *testing.T) {
 
 	in := &CmdIn{}
 	in.AppDir = tmp
-	prefix := "APP_"
-	in.Prefix = &prefix
-	in.Env = &env
-	keys := ArgMap{"APP_FOO", "APP_bar"}
-	values := ArgMap{"update 1", "update 2"}
-	in.Keys = &keys
-	in.Values = &values
-	in.Compare = new(string)
-	in.Generate = new(string)
-	in.Config, err = NewConfig(in.AppDir, *in.Env, *in.Prefix)
-	flagBase64 := false
-	in.Base64 = &flagBase64
+	in.Prefix = "APP_"
+	in.Env = env
+	in.Keys = ArgMap{"APP_FOO", "APP_bar"}
+	in.Values = ArgMap{"update 1", "update 2"}
+	in.Config, err = NewConfig(in.AppDir, in.Env, in.Prefix)
 	require.NoError(t, err)
-	csv := false
-	in.CSV = &csv
 
 	out, err := Cmd(in)
 	require.NoError(t, err)
@@ -235,13 +216,10 @@ func TestSetEnv(t *testing.T) {
 
 	in := &CmdIn{}
 	in.AppDir = tmp
-	prefix := "APP_"
-	in.Prefix = &prefix
-	in.Env = &env
-	in.Config, err = NewConfig(in.AppDir, *in.Env, *in.Prefix)
+	in.Prefix = "APP_"
+	in.Env = env
+	in.Config, err = NewConfig(in.AppDir, in.Env, in.Prefix)
 	require.NoError(t, err)
-	csv := false
-	in.CSV = &csv
 
 	buf, err := SetEnv(in)
 	require.NoError(t, err)
@@ -276,22 +254,25 @@ func TestCSV(t *testing.T) {
 
 	in := &CmdIn{}
 	in.AppDir = tmp
-	prefix := "APP_"
-	in.Prefix = &prefix
-	in.Env = &env
-	in.Compare = new(string)
-	in.Generate = new(string)
-	in.Config, err = NewConfig(in.AppDir, *in.Env, *in.Prefix)
+	in.Prefix = "APP_"
+	in.Env = env
+	in.Config, err = NewConfig(in.AppDir, in.Env, in.Prefix)
 	require.NoError(t, err)
-	csv := true
-	in.CSV = &csv
+	in.CSV = true
 
+	in.Sep = ","
 	out, err := Cmd(in)
 	require.NoError(t, err)
 	require.Equal(t, CmdCSV, out.Cmd)
 	require.Equal(t, 0, out.ExitCode)
-
 	require.Equal(t, "APP_BAR=bar,APP_FOO=foo", out.Buf.String())
+
+	in.Sep = " "
+	out, err = Cmd(in)
+	require.NoError(t, err)
+	require.Equal(t, CmdCSV, out.Cmd)
+	require.Equal(t, 0, out.ExitCode)
+	require.Equal(t, "APP_BAR=bar APP_FOO=foo", out.Buf.String())
 }
 
 func TestBase64(t *testing.T) {
@@ -311,19 +292,11 @@ func TestBase64(t *testing.T) {
 
 	in := &CmdIn{}
 	in.AppDir = tmp
-	prefix := "APP_"
-	in.Prefix = &prefix
-	in.Env = &env
-	compare := ""
-	in.Compare = &compare
-	generate := ""
-	in.Generate = &generate
-	flagBase64 := true
-	in.Base64 = &flagBase64
-	in.Config, err = NewConfig(in.AppDir, *in.Env, *in.Prefix)
+	in.Prefix = "APP_"
+	in.Env = env
+	in.Base64 = true
+	in.Config, err = NewConfig(in.AppDir, in.Env, in.Prefix)
 	require.NoError(t, err)
-	csv := false
-	in.CSV = &csv
 
 	out, err := Cmd(in)
 	require.NoError(t, err)
@@ -353,28 +326,14 @@ func TestGet(t *testing.T) {
 		0644)
 	require.NoError(t, err)
 
-	// TODO The Cmd and Process functions are supposed to make testing easier,
-	// below seems more cumbersome than necessary.
-	// Can't remember which article suggested that layout,
-	// maybe it's not implemented correctly?
-	empty := ""
-	flagFalse := false
 	in := &CmdIn{}
 	in.AppDir = tmp
-	prefix := "APP_"
-	in.Prefix = &prefix
-	in.Env = &env
-	keys := ArgMap{}
-	in.Keys = &keys
-	in.Compare = &empty
-	in.Generate = &empty
-	in.Base64 = &flagFalse
-	in.Config, err = NewConfig(in.AppDir, *in.Env, *in.Prefix)
+	in.Prefix = "APP_"
+	in.Env = env
+	in.Config, err = NewConfig(in.AppDir, in.Env, in.Prefix)
 	require.NoError(t, err)
-	in.CSV = &flagFalse
-	key := "APP_FOO"
-	in.PrintValue = &key
 
+	in.PrintValue = "APP_FOO"
 	out, err := Cmd(in)
 	require.NoError(t, err)
 	require.Equal(t, CmdGet, out.Cmd)
@@ -382,8 +341,7 @@ func TestGet(t *testing.T) {
 	actual := out.Buf.String()
 	require.Equal(t, "foo", actual)
 
-	key = "APP_BAR"
-	in.PrintValue = &key
+	in.PrintValue = "APP_BAR"
 	out, err = Cmd(in)
 	require.NoError(t, err)
 	require.Equal(t, CmdGet, out.Cmd)

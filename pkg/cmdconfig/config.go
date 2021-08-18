@@ -53,29 +53,29 @@ type CmdIn struct {
 	// AppDir is the application root
 	AppDir string
 	// Prefix for env vars
-	Prefix *string
+	Prefix string
 	// Env selects the config file
-	Env *string
+	Env string
 	// Compare config file keys
-	Compare *string
+	Compare string
 	// Readers make testing easier
 	ConfigReader  io.Reader
 	CompareReader io.Reader
 	// Keys to update
-	Keys *ArgMap
+	Keys ArgMap
 	// Value to update
-	Values *ArgMap
+	Values ArgMap
 	// PrintValue for the given key
-	PrintValue *string
+	PrintValue string
 	// Generate config helper
-	Generate *string
+	Generate string
 	// Config file for Env
 	Config *Config
-	CSV    *bool
-	Sep    *string
-	DryRun *bool
+	CSV    bool
+	Sep    string
+	DryRun bool
 	// Base64 encode config file
-	Base64 *bool
+	Base64 bool
 }
 
 // CmdOut for use with Cmd function
@@ -152,7 +152,7 @@ func NewConfig(appDir string, env string, prefix string) (c *Config, err error) 
 func CompareKeys(in *CmdIn) (buf *bytes.Buffer, err error) {
 	buf = new(bytes.Buffer)
 
-	compConfig, err := NewConfig(in.AppDir, *in.Compare, *in.Prefix)
+	compConfig, err := NewConfig(in.AppDir, in.Compare, in.Prefix)
 	if err != nil {
 		return buf, err
 	}
@@ -212,14 +212,14 @@ type GenerateData struct {
 func NewGenerateData(in *CmdIn) (data GenerateData) {
 	// Init
 	data = GenerateData{
-		Prefix: *in.Prefix,
+		Prefix: in.Prefix,
 		AppDir: in.AppDir,
 	}
 
 	// APP_DIR is usually not set in the config.json file
 	keys := make([]string, len(in.Config.Keys))
 	copy(keys, in.Config.Keys)
-	keys = append(keys, fmt.Sprintf("%vDIR", *in.Prefix))
+	keys = append(keys, fmt.Sprintf("%vDIR", in.Prefix))
 
 	data.Keys = make([]GenerateKey, len(keys))
 	data.TemplateKeys = make([]TemplateKey, 0)
@@ -230,7 +230,7 @@ func NewGenerateData(in *CmdIn) (data GenerateData) {
 
 	// Prepare data for generating config helper files
 	for i, keyWithPrefix := range keys {
-		formattedKey := FormatKey(*in.Prefix, keyWithPrefix)
+		formattedKey := FormatKey(in.Prefix, keyWithPrefix)
 		configFileKeys[formattedKey] = true
 		generateKey := GenerateKey{
 			KeyPrefix:  keyWithPrefix,
@@ -328,7 +328,7 @@ func GenerateHelper(in *CmdIn) (buf *bytes.Buffer, err error) {
 	buf = new(bytes.Buffer)
 
 	// Generate config.go from template
-	filePath := filepath.Join(in.AppDir, *in.Generate, "config.go")
+	filePath := filepath.Join(in.AppDir, in.Generate, "config.go")
 	t := template.Must(template.New("generateConfig").Parse(generateConfig))
 	generatedBuf := new(bytes.Buffer)
 	err = t.Execute(generatedBuf, &data)
@@ -337,7 +337,7 @@ func GenerateHelper(in *CmdIn) (buf *bytes.Buffer, err error) {
 		fmt.Printf("template data %s %v", "\n", string(b))
 		return generatedBuf, errors.WithStack(err)
 	}
-	if *in.DryRun {
+	if in.DryRun {
 		// Write file path and generated text to return buf
 		buf.WriteString("\n")
 		buf.WriteString(fmt.Sprintf("// FilePath: %s", filePath))
@@ -356,7 +356,7 @@ func GenerateHelper(in *CmdIn) (buf *bytes.Buffer, err error) {
 	}
 
 	// Generate template.go from template
-	filePath = filepath.Join(in.AppDir, *in.Generate, "template.go")
+	filePath = filepath.Join(in.AppDir, in.Generate, "template.go")
 	t = template.Must(template.New("generateTemplate").Parse(generateTemplate))
 	generatedBuf = new(bytes.Buffer)
 	err = t.Execute(generatedBuf, &data)
@@ -365,7 +365,7 @@ func GenerateHelper(in *CmdIn) (buf *bytes.Buffer, err error) {
 		fmt.Printf("template data %s %v", "\n", string(b))
 		return generatedBuf, errors.WithStack(err)
 	}
-	if *in.DryRun {
+	if in.DryRun {
 		// Write file path and generated text to return buf
 		buf.WriteString("\n")
 		buf.WriteString(fmt.Sprintf("// FilePath: %s", filePath))
@@ -385,7 +385,7 @@ func GenerateHelper(in *CmdIn) (buf *bytes.Buffer, err error) {
 	}
 
 	// Generate fn.go from template
-	filePath = filepath.Join(in.AppDir, *in.Generate, "fn.go")
+	filePath = filepath.Join(in.AppDir, in.Generate, "fn.go")
 	t = template.Must(template.New("generateFn").Parse(generateFn))
 	generatedBuf = new(bytes.Buffer)
 	err = t.Execute(generatedBuf, &data)
@@ -394,7 +394,7 @@ func GenerateHelper(in *CmdIn) (buf *bytes.Buffer, err error) {
 		fmt.Printf("template data %s %v", "\n", string(b))
 		return generatedBuf, errors.WithStack(err)
 	}
-	if *in.DryRun {
+	if in.DryRun {
 		// Write file path and generated text to return buf
 		buf.WriteString("\n")
 		buf.WriteString(fmt.Sprintf("// FilePath: %s", filePath))
@@ -426,19 +426,17 @@ func UpdateConfig(in *CmdIn) (buf *bytes.Buffer, err error) {
 	}
 
 	// Validate input
-	keys := *in.Keys
-	values := *in.Values
-	for i, key := range keys {
-		if !strings.HasPrefix(key, *in.Prefix) {
+	for i, key := range in.Keys {
+		if !strings.HasPrefix(key, in.Prefix) {
 			return buf, errors.WithStack(
 				fmt.Errorf("key must strart with prefix %v", in.Prefix))
 		}
 
-		if i > len(*in.Values)-1 {
+		if i > len(in.Values)-1 {
 			return buf, errors.WithStack(
 				fmt.Errorf("missing value for key %v", key))
 		}
-		value := values[i]
+		value := in.Values[i]
 
 		// Update key value pairs
 		//log.Debug().Msgf("Config %v %v=%v", *in.Env, key, value)
@@ -465,7 +463,7 @@ func SetEnv(in *CmdIn) (buf *bytes.Buffer, err error) {
 		a := strings.Split(v, "=")
 		if len(a) == 2 {
 			key := a[0]
-			if strings.HasPrefix(key, *in.Prefix) {
+			if strings.HasPrefix(key, in.Prefix) {
 				envKeys[a[0]] = true
 			}
 		}
@@ -482,7 +480,7 @@ func SetEnv(in *CmdIn) (buf *bytes.Buffer, err error) {
 
 	// Don't print command to unset APP_DIR
 	// https://github.com/mozey/config/issues/9
-	appDirKey := fmt.Sprintf("%vDIR", *in.Prefix)
+	appDirKey := fmt.Sprintf("%vDIR", in.Prefix)
 	if _, ok := envKeys[appDirKey]; ok {
 		envKeys[appDirKey] = false
 	}
@@ -516,7 +514,7 @@ func CSV(in *CmdIn) (buf *bytes.Buffer, err error) {
 	}
 
 	// Do not use encoding/csv, the writer will append a newline
-	_, err = buf.WriteString(strings.Join(a, *in.Sep))
+	_, err = buf.WriteString(strings.Join(a, in.Sep))
 	if err != nil {
 		return buf, errors.WithStack(err)
 	}
@@ -539,7 +537,7 @@ func Base64(in *CmdIn) (buf *bytes.Buffer, err error) {
 
 func PrintValue(in *CmdIn) (buf *bytes.Buffer, err error) {
 	buf = new(bytes.Buffer)
-	key := *in.PrintValue
+	key := in.PrintValue
 
 	if value, ok := in.Config.Map[key]; ok {
 		buf.WriteString(value)
@@ -553,7 +551,7 @@ func PrintValue(in *CmdIn) (buf *bytes.Buffer, err error) {
 func Cmd(in *CmdIn) (out *CmdOut, err error) {
 	out = &CmdOut{}
 
-	if *in.CSV {
+	if in.CSV {
 		// Get env CSV
 		buf, err := CSV(in)
 		if err != nil {
@@ -563,7 +561,7 @@ func Cmd(in *CmdIn) (out *CmdOut, err error) {
 		out.Buf = buf
 		return out, nil
 
-	} else if *in.Compare != "" {
+	} else if in.Compare != "" {
 		// Compare keys
 		buf, err := CompareKeys(in)
 		if err != nil {
@@ -576,7 +574,7 @@ func Cmd(in *CmdIn) (out *CmdOut, err error) {
 		}
 		return out, nil
 
-	} else if *in.Generate != "" {
+	} else if in.Generate != "" {
 		// Generate config helper
 		buf, err := GenerateHelper(in)
 		if err != nil {
@@ -586,7 +584,7 @@ func Cmd(in *CmdIn) (out *CmdOut, err error) {
 		out.Buf = buf
 		return out, nil
 
-	} else if *in.Base64 {
+	} else if in.Base64 {
 		buf, err := Base64(in)
 		if err != nil {
 			return out, err
@@ -595,7 +593,7 @@ func Cmd(in *CmdIn) (out *CmdOut, err error) {
 		out.Buf = buf
 		return out, nil
 
-	} else if len(*in.Keys) > 0 {
+	} else if len(in.Keys) > 0 {
 		// Update config key value pairs
 		buf, err := UpdateConfig(in)
 		if err != nil {
@@ -605,7 +603,7 @@ func Cmd(in *CmdIn) (out *CmdOut, err error) {
 		out.Buf = buf
 		return out, nil
 
-	} else if *in.PrintValue != "" {
+	} else if in.PrintValue != "" {
 		buf, err := PrintValue(in)
 		if err != nil {
 			return out, err
@@ -630,24 +628,25 @@ func ParseFlags() *CmdIn {
 	in := CmdIn{}
 
 	// Flags
-	in.Prefix = flag.String("prefix", "APP_", "Config key prefix")
-	in.Env = flag.String("env", "dev", "Config file to use")
+	flag.StringVar(&in.Prefix, "prefix", "APP_", "Config key prefix")
+	flag.StringVar(&in.Env, "env", "dev", "Config file to use")
 	// Default must be empty
-	in.Compare = flag.String(CmdCompare, "", "Compare config file keys")
-	in.Keys = &ArgMap{}
-	flag.Var(in.Keys, "key", "Set key and print config JSON")
-	in.Values = &ArgMap{}
-	flag.Var(in.Values, "value", "Value for last key specified")
+	flag.StringVar(&in.Compare, CmdCompare, "", "Compare config file keys")
+	in.Keys = ArgMap{}
+	flag.Var(&in.Keys, "key", "Set key and print config JSON")
+	in.Values = ArgMap{}
+	flag.Var(&in.Values, "value", "Value for last key specified")
 	// Default must be empty
-	in.PrintValue = flag.String(CmdGet, "", "Print value for given key")
+	flag.StringVar(&in.PrintValue, CmdGet, "", "Print value for given key")
 	// Default must be empty
-	in.Generate = flag.String(CmdGenerate, "", "Generate config helper at path")
-	in.CSV = flag.Bool(
+	flag.StringVar(&in.Generate,
+		CmdGenerate, "", "Generate config helper at path")
+	flag.BoolVar(&in.CSV,
 		CmdCSV, false, "Print env as a list of key=value")
-	in.Sep = flag.String("sep", ",", "Separator for with with csv flag")
-	in.DryRun = flag.Bool(
+	flag.StringVar(&in.Sep, "sep", ",", "Separator for use with csv flag")
+	flag.BoolVar(&in.DryRun,
 		CmdDryRun, false, "Don't write files, just print result")
-	in.Base64 = flag.Bool(
+	flag.BoolVar(&in.Base64,
 		CmdBase64, false, "Encode config file as base64 string")
 
 	flag.Parse()
@@ -669,10 +668,10 @@ func (in *CmdIn) Process(out *CmdOut) {
 
 	case CmdUpdateConfig:
 		// Print config
-		if *in.DryRun {
+		if in.DryRun {
 			fmt.Println(out.Buf.String())
 		} else {
-			configPath, err := GetPath(in.AppDir, *in.Env)
+			configPath, err := GetPath(in.AppDir, in.Env)
 			if err != nil {
 				log.Fatal().Stack().Err(err).Msg("")
 			}
@@ -716,14 +715,14 @@ func Main() {
 
 	// Parse flags
 	in := ParseFlags()
-	prefix := *in.Prefix
+	prefix := in.Prefix
 	if prefix[len(prefix)-1:] != "_" {
 		// Prefix must end with underscore
-		*in.Prefix = fmt.Sprintf("%s_", prefix)
+		in.Prefix = fmt.Sprintf("%s_", prefix)
 	}
 
 	// appDir is required
-	appDirKey := fmt.Sprintf("%sDIR", *in.Prefix)
+	appDirKey := fmt.Sprintf("%sDIR", in.Prefix)
 	appDir := os.Getenv(appDirKey)
 	if appDir == "" {
 		fmt.Printf("%v env not set%s", appDirKey, "\n")
@@ -732,11 +731,11 @@ func Main() {
 	in.AppDir = appDir
 
 	// Set config
-	config, err := NewConfig(in.AppDir, *in.Env, *in.Prefix)
+	config, err := NewConfig(in.AppDir, in.Env, in.Prefix)
 	if err != nil {
 		log.Fatal().
 			Str("APP_DIR", in.AppDir).
-			Str("env", *in.Env).
+			Str("env", in.Env).
 			Stack().Err(err).Msg("")
 	}
 	in.Config = config
