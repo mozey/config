@@ -84,7 +84,7 @@ func TestCompareKeys(t *testing.T) {
 
 	out, err := Cmd(in)
 	require.NoError(t, err)
-	require.Equal(t, "compare", out.Cmd)
+	require.Equal(t, CmdCompare, out.Cmd)
 	require.Equal(t, 1, out.ExitCode)
 	require.Equal(t,
 		"APP_BAR\nAPP_FOO\n",
@@ -124,7 +124,7 @@ func TestGenerateHelper(t *testing.T) {
 
 	out, err := Cmd(in)
 	require.NoError(t, err)
-	require.Equal(t, "generate", out.Cmd)
+	require.Equal(t, CmdGenerate, out.Cmd)
 	require.Equal(t, 0, out.ExitCode)
 	generated := out.Buf.String()
 
@@ -201,7 +201,7 @@ func TestUpdateConfig(t *testing.T) {
 
 	out, err := Cmd(in)
 	require.NoError(t, err)
-	require.Equal(t, "update_config", out.Cmd)
+	require.Equal(t, CmdUpdateConfig, out.Cmd)
 	require.Equal(t, 0, out.ExitCode)
 	log.Debug().Msg(out.Buf.String())
 
@@ -282,13 +282,13 @@ func TestCSV(t *testing.T) {
 	in.Compare = new(string)
 	in.Generate = new(string)
 	in.Config, err = NewConfig(in.AppDir, *in.Env, *in.Prefix)
+	require.NoError(t, err)
 	csv := true
 	in.CSV = &csv
-	require.NoError(t, err)
 
 	out, err := Cmd(in)
 	require.NoError(t, err)
-	require.Equal(t, "csv", out.Cmd)
+	require.Equal(t, CmdCSV, out.Cmd)
 	require.Equal(t, 0, out.ExitCode)
 
 	require.Equal(t, "APP_BAR=bar,APP_FOO=foo", out.Buf.String())
@@ -321,13 +321,13 @@ func TestBase64(t *testing.T) {
 	flagBase64 := true
 	in.Base64 = &flagBase64
 	in.Config, err = NewConfig(in.AppDir, *in.Env, *in.Prefix)
+	require.NoError(t, err)
 	csv := false
 	in.CSV = &csv
-	require.NoError(t, err)
 
 	out, err := Cmd(in)
 	require.NoError(t, err)
-	require.Equal(t, "base64", out.Cmd)
+	require.Equal(t, CmdBase64, out.Cmd)
 	require.Equal(t, 0, out.ExitCode)
 
 	actual := out.Buf.String()
@@ -336,6 +336,60 @@ func TestBase64(t *testing.T) {
 	decoded, err := base64.StdEncoding.DecodeString(actual)
 	require.NoError(t, err)
 	require.Equal(t, `{"APP_BAR":"bar","APP_FOO":"foo"}`, string(decoded))
+}
+
+func TestGet(t *testing.T) {
+	tmp, err := ioutil.TempDir("", "mozey-config")
+	require.NoError(t, err)
+	defer (func() {
+		_ = os.RemoveAll(tmp)
+	})()
+
+	env := "dev"
+
+	err = ioutil.WriteFile(
+		filepath.Join(tmp, fmt.Sprintf("config.%v.json", env)),
+		[]byte(`{"APP_FOO": "foo", "APP_BAR": "bar"}`),
+		0644)
+	require.NoError(t, err)
+
+	// TODO The Cmd and Process functions are supposed to make testing easier,
+	// below seems more cumbersome than necessary.
+	// Can't remember which article suggested that layout,
+	// maybe it's not implemented correctly?
+	empty := ""
+	flagFalse := false
+	in := &CmdIn{}
+	in.AppDir = tmp
+	prefix := "APP_"
+	in.Prefix = &prefix
+	in.Env = &env
+	keys := ArgMap{}
+	in.Keys = &keys
+	in.Compare = &empty
+	in.Generate = &empty
+	in.Base64 = &flagFalse
+	in.Config, err = NewConfig(in.AppDir, *in.Env, *in.Prefix)
+	require.NoError(t, err)
+	in.CSV = &flagFalse
+	key := "APP_FOO"
+	in.PrintValue = &key
+
+	out, err := Cmd(in)
+	require.NoError(t, err)
+	require.Equal(t, CmdGet, out.Cmd)
+	require.Equal(t, 0, out.ExitCode)
+	actual := out.Buf.String()
+	require.Equal(t, "foo", actual)
+
+	key = "APP_BAR"
+	in.PrintValue = &key
+	out, err = Cmd(in)
+	require.NoError(t, err)
+	require.Equal(t, CmdGet, out.Cmd)
+	require.Equal(t, 0, out.ExitCode)
+	actual = out.Buf.String()
+	require.Equal(t, "bar", actual)
 }
 
 func TestTypeConversionFns(t *testing.T) {

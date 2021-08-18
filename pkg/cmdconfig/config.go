@@ -20,6 +20,15 @@ import (
 	"github.com/rs/zerolog/log"
 )
 
+const CmdBase64 = "base64"
+const CmdCompare = "compare"
+const CmdCSV = "csv"
+const CmdDryRun = "dry-run"
+const CmdGenerate = "generate"
+const CmdSetEnv = "set_env"
+const CmdGet = "get"
+const CmdUpdateConfig = "update_config"
+
 // ArgMap for parsing flags with multiple keys
 type ArgMap []string
 
@@ -56,6 +65,8 @@ type CmdIn struct {
 	Keys *ArgMap
 	// Value to update
 	Values *ArgMap
+	// PrintValue for the given key
+	PrintValue *string
 	// Generate config helper
 	Generate *string
 	// Config file for Env
@@ -525,6 +536,19 @@ func Base64(in *CmdIn) (buf *bytes.Buffer, err error) {
 	return buf, nil
 }
 
+func PrintValue(in *CmdIn) (buf *bytes.Buffer, err error) {
+	buf = new(bytes.Buffer)
+	key := *in.PrintValue
+
+	if value, ok := in.Config.Map[key]; ok {
+		buf.WriteString(value)
+		return buf, nil
+	}
+
+	return buf, errors.WithStack(
+		fmt.Errorf("missing value for key %v", key))
+}
+
 func Cmd(in *CmdIn) (out *CmdOut, err error) {
 	out = &CmdOut{}
 
@@ -534,7 +558,7 @@ func Cmd(in *CmdIn) (out *CmdOut, err error) {
 		if err != nil {
 			return out, err
 		}
-		out.Cmd = "csv"
+		out.Cmd = CmdCSV
 		out.Buf = buf
 		return out, nil
 
@@ -544,7 +568,7 @@ func Cmd(in *CmdIn) (out *CmdOut, err error) {
 		if err != nil {
 			return out, err
 		}
-		out.Cmd = "compare"
+		out.Cmd = CmdCompare
 		out.Buf = buf
 		if out.Buf.Len() > 0 {
 			out.ExitCode = 1
@@ -557,7 +581,7 @@ func Cmd(in *CmdIn) (out *CmdOut, err error) {
 		if err != nil {
 			return out, err
 		}
-		out.Cmd = "generate"
+		out.Cmd = CmdGenerate
 		out.Buf = buf
 		return out, nil
 
@@ -566,7 +590,7 @@ func Cmd(in *CmdIn) (out *CmdOut, err error) {
 		if err != nil {
 			return out, err
 		}
-		out.Cmd = "base64"
+		out.Cmd = CmdBase64
 		out.Buf = buf
 		return out, nil
 
@@ -576,7 +600,16 @@ func Cmd(in *CmdIn) (out *CmdOut, err error) {
 		if err != nil {
 			return out, err
 		}
-		out.Cmd = "update_config"
+		out.Cmd = CmdUpdateConfig
+		out.Buf = buf
+		return out, nil
+
+	} else if *in.PrintValue != "" {
+		buf, err := PrintValue(in)
+		if err != nil {
+			return out, err
+		}
+		out.Cmd = CmdGet
 		out.Buf = buf
 		return out, nil
 	}
@@ -587,7 +620,7 @@ func Cmd(in *CmdIn) (out *CmdOut, err error) {
 	if err != nil {
 		return out, err
 	}
-	out.Cmd = "set_env"
+	out.Cmd = CmdSetEnv
 	out.Buf = buf
 	return out, nil
 }
@@ -599,19 +632,21 @@ func ParseFlags() *CmdIn {
 	in.Prefix = flag.String("prefix", "APP_", "Config key prefix")
 	in.Env = flag.String("env", "dev", "Config file to use")
 	// Default must be empty
-	in.Compare = flag.String("compare", "", "Compare config file keys")
+	in.Compare = flag.String(CmdCompare, "", "Compare config file keys")
 	in.Keys = &ArgMap{}
 	flag.Var(in.Keys, "key", "Set key and print config JSON")
 	in.Values = &ArgMap{}
 	flag.Var(in.Values, "value", "Value for last key specified")
 	// Default must be empty
-	in.Generate = flag.String("generate", "", "Generate config helper at path")
+	in.PrintValue = flag.String(CmdGet, "", "Print value for given key")
+	// Default must be empty
+	in.Generate = flag.String(CmdGenerate, "", "Generate config helper at path")
 	in.CSV = flag.Bool(
-		"csv", false, "Print env key=value CSV")
+		CmdCSV, false, "Print env key=value CSV")
 	in.DryRun = flag.Bool(
-		"dry-run", false, "Don't write files, just print result")
+		CmdDryRun, false, "Don't write files, just print result")
 	in.Base64 = flag.Bool(
-		"base64", false, "Encode config file as base64 string")
+		CmdBase64, false, "Encode config file as base64 string")
 
 	flag.Parse()
 
@@ -620,12 +655,17 @@ func ParseFlags() *CmdIn {
 
 func (in *CmdIn) Process(out *CmdOut) {
 	switch out.Cmd {
-	case "set_env":
+	case CmdSetEnv:
 		// Print set and unset env commands
 		fmt.Print(out.Buf.String())
 		os.Exit(out.ExitCode)
 
-	case "update_config":
+	case CmdGet:
+		// Print value for the given key
+		fmt.Print(out.Buf.String())
+		os.Exit(out.ExitCode)
+
+	case CmdUpdateConfig:
 		// Print config
 		if *in.DryRun {
 			fmt.Println(out.Buf.String())
@@ -647,25 +687,25 @@ func (in *CmdIn) Process(out *CmdOut) {
 		}
 		os.Exit(out.ExitCode)
 
-	case "generate":
+	case CmdGenerate:
 		fmt.Println(out.Buf.String())
 		os.Exit(out.ExitCode)
 
-	case "compare":
+	case CmdCompare:
 		fmt.Print(out.Buf.String())
 		os.Exit(out.ExitCode)
 
-	case "csv":
+	case CmdCSV:
 		fmt.Print(out.Buf.String())
 		os.Exit(out.ExitCode)
 
-	case "base64":
+	case CmdBase64:
 		fmt.Print(out.Buf.String())
 		os.Exit(out.ExitCode)
 	}
 }
 
-// Main can be executed as the default.
+// Main can be executed by default.
 // For custom flags and CMDs copy the code below.
 // Try not to change the behaviour of default CMDs,
 // e.g. custom flags must only add functionality
