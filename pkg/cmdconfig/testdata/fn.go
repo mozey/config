@@ -16,10 +16,42 @@ type Fn struct {
 // .............................................................................
 // Methods to set function input
 
-// FnBar set the function input to the value of APP_BAR
+// FnBar sets the function input to the value of APP_BAR
 func (c *Config) FnBar() *Fn {
 	fn := Fn{}
 	fn.input = c.bar
+	fn.output = ""
+	return &fn
+}
+
+// FnBuz sets the function input to the value of APP_BUZ
+func (c *Config) FnBuz() *Fn {
+	fn := Fn{}
+	fn.input = c.buz
+	fn.output = ""
+	return &fn
+}
+
+// FnFoo sets the function input to the value of APP_FOO
+func (c *Config) FnFoo() *Fn {
+	fn := Fn{}
+	fn.input = c.foo
+	fn.output = ""
+	return &fn
+}
+
+// FnTemplateFiz sets the function input to the value of APP_TEMPLATE_FIZ
+func (c *Config) FnTemplateFiz() *Fn {
+	fn := Fn{}
+	fn.input = c.templateFiz
+	fn.output = ""
+	return &fn
+}
+
+// FnDir sets the function input to the value of APP_DIR
+func (c *Config) FnDir() *Fn {
+	fn := Fn{}
+	fn.input = c.dir
 	fn.output = ""
 	return &fn
 }

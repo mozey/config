@@ -149,7 +149,7 @@ func TestGenerateHelper(t *testing.T) {
 			verified++
 		}
 	}
-	require.Equal(t, 2, verified,
+	require.Equal(t, 3, verified,
 		"Unexpected number of files verified")
 
 	// We've checked the generated code match the files in pkg/cmdconfig/testdata,
