@@ -72,6 +72,7 @@ type CmdIn struct {
 	// Config file for Env
 	Config *Config
 	CSV    *bool
+	Sep    *string
 	DryRun *bool
 	// Base64 encode config file
 	Base64 *bool
@@ -515,7 +516,7 @@ func CSV(in *CmdIn) (buf *bytes.Buffer, err error) {
 	}
 
 	// Do not use encoding/csv, the writer will append a newline
-	_, err = buf.WriteString(strings.Join(a, ","))
+	_, err = buf.WriteString(strings.Join(a, *in.Sep))
 	if err != nil {
 		return buf, errors.WithStack(err)
 	}
@@ -642,7 +643,8 @@ func ParseFlags() *CmdIn {
 	// Default must be empty
 	in.Generate = flag.String(CmdGenerate, "", "Generate config helper at path")
 	in.CSV = flag.Bool(
-		CmdCSV, false, "Print env key=value CSV")
+		CmdCSV, false, "Print env as a list of key=value")
+	in.Sep = flag.String("sep", ",", "Separator for with with csv flag")
 	in.DryRun = flag.Bool(
 		CmdDryRun, false, "Don't write files, just print result")
 	in.Base64 = flag.Bool(
