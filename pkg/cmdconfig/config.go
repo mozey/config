@@ -24,9 +24,9 @@ const CmdCompare = "compare"
 const CmdCSV = "csv"
 const CmdDryRun = "dry-run"
 const CmdGenerate = "generate"
-const CmdSetEnv = "set_env"
+const CmdSetEnv = "set-env"
 const CmdGet = "get"
-const CmdUpdateConfig = "update_config"
+const CmdUpdateConfig = "update-config"
 
 // ArgMap for parsing flags with multiple keys
 type ArgMap []string
@@ -55,6 +55,9 @@ type CmdIn struct {
 	Prefix string
 	// Env selects the config file
 	Env string
+	// All makes the cmd apply to all config files in APP_DIR, including samples
+	// https://github.com/mozey/config/issues/2
+	All bool
 	// Compare config file keys
 	Compare string
 	// Keys to update
@@ -93,7 +96,47 @@ type CmdOut struct {
 	Files []File
 }
 
-// GetConfigFilePath helper
+// GetEnvs globs all config files in APP_DIR to list possible values of env
+func GetEnvs(appDir string, includeSamples bool) (envs []string, err error) {
+	envs = make([]string, 0)
+
+	// Find matching files
+	fileNamePattern := "config.*.json"
+	if includeSamples {
+		fileNamePattern = "sample.config.*.json"
+	}
+	pattern := filepath.Join(appDir, fileNamePattern)
+	matches, err := filepath.Glob(pattern)
+	if err != nil {
+		return envs, errors.WithStack(err)
+	}
+
+	// Regexp to submatch env from file name
+	s := "config\\.(\\w*)\\.json"
+	r, err := regexp.Compile(s)
+	if err != nil {
+		return envs, errors.WithStack(err)
+	}
+
+	for _, match := range matches {
+		baseName := filepath.Base(match)
+		matches := r.FindStringSubmatch(baseName)
+		if len(matches) == 2 {
+			env := matches[1]
+			if strings.HasPrefix(baseName, SamplePrefix) {
+				env = fmt.Sprintf("%s%s", SamplePrefix, env)
+			}
+			envs = append(envs, env)
+		}
+	}
+	return envs, nil
+}
+
+const SamplePrefix = "sample."
+
+// GetConfigFilePath returns the path to a config file.
+// It can also be used to return the path to a sample config file by prefixing env.
+// For example, to get the path to "sample.config.dev.json" pass env="sample.dev"
 func GetConfigFilePath(appDir string, env string) (string, error) {
 	if _, err := os.Stat(appDir); err != nil {
 		if os.IsNotExist(err) {
@@ -104,15 +147,15 @@ func GetConfigFilePath(appDir string, env string) (string, error) {
 		}
 	}
 
-	// Strip "sample." prefix from env
-	samplePrefix := "sample."
+	// Strip SamplePrefix from env
 	sample := ""
-	if strings.Contains(env, samplePrefix) {
-		sample = samplePrefix
-		env = strings.Replace(env, samplePrefix, "", 1)
+	if strings.Contains(env, SamplePrefix) {
+		sample = SamplePrefix
+		env = strings.Replace(env, SamplePrefix, "", 1)
 	}
 
-	return filepath.Join(appDir, fmt.Sprintf("%vconfig.%v.json", sample, env)), nil
+	return filepath.Join(
+		appDir, fmt.Sprintf("%vconfig.%v.json", sample, env)), nil
 }
 
 func RefreshKeys(c *Config) {
@@ -606,6 +649,7 @@ func ParseFlags() *CmdIn {
 	// Flags
 	flag.StringVar(&in.Prefix, "prefix", "APP_", "Config key prefix")
 	flag.StringVar(&in.Env, "env", "dev", "Config file to use")
+	flag.BoolVar(&in.All, "all", false, "Apply to all config files")
 	// Default must be empty
 	flag.StringVar(&in.Compare, CmdCompare, "", "Compare config file keys")
 	in.Keys = ArgMap{}

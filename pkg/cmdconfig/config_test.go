@@ -437,3 +437,41 @@ func TestGetTemplateParams(t *testing.T) {
 	params := GetTemplateParams("Fizz{{.Buz}}{{.Meh}}")
 	require.Equal(t, []string{"Buz", "Meh"}, params)
 }
+
+func TestGetEnvs(t *testing.T) {
+	tmp, err := ioutil.TempDir("", "mozey-config")
+	require.NoError(t, err)
+	defer (func() {
+		_ = os.RemoveAll(tmp)
+	})()
+
+	env := "dev"
+	err = ioutil.WriteFile(
+		filepath.Join(tmp, fmt.Sprintf("config.%v.json", env)),
+		[]byte(`{}`),
+		0644)
+	require.NoError(t, err)
+	err = ioutil.WriteFile(
+		filepath.Join(tmp, fmt.Sprintf("sample.config.%v.json", env)),
+		[]byte(`{}`),
+		0644)
+	require.NoError(t, err)
+	env = "prod"
+	err = ioutil.WriteFile(
+		filepath.Join(tmp, fmt.Sprintf("config.%v.json", env)),
+		[]byte(`{}`),
+		0644)
+	require.NoError(t, err)
+	err = ioutil.WriteFile(
+		filepath.Join(tmp, fmt.Sprintf("sample.config.%v.json", env)),
+		[]byte(`{}`),
+		0644)
+	require.NoError(t, err)
+
+	envs, err := GetEnvs(tmp, false)
+	require.NoError(t, err)
+	fmt.Println(envs)
+	envs, err = GetEnvs(tmp, true)
+	require.NoError(t, err)
+	fmt.Println(envs)
+}
