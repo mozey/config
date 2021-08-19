@@ -40,12 +40,12 @@ func randString(n int) string {
 
 func TestGetPath(t *testing.T) {
 	appDir := randString(8)
-	_, err := GetPath(appDir, "")
+	_, err := GetConfigFilePath(appDir, "")
 	require.Error(t, err, "assumed path does not exist ", appDir)
 
 	appDir = "/"
 	env := "foo"
-	p, err := GetPath(appDir, env)
+	p, err := GetConfigFilePath(appDir, env)
 	require.NoError(t, err)
 	require.Equal(t, filepath.Join(appDir, fmt.Sprintf("config.%v.json", env)), p)
 }
@@ -99,7 +99,7 @@ func TestGenerateHelper(t *testing.T) {
 	var err error
 
 	appDir := os.Getenv("APP_DIR")
-	require.NotEmpty(t, appDir)
+	require.NotEmpty(t, appDir, "APP_DIR must not be empty")
 
 	in := &CmdIn{}
 	in.AppDir = appDir
@@ -116,31 +116,22 @@ func TestGenerateHelper(t *testing.T) {
 	require.NoError(t, err)
 	require.Equal(t, CmdGenerate, out.Cmd)
 	require.Equal(t, 0, out.ExitCode)
-	generated := out.Buf.String()
+	require.Equal(t, 3, len(out.Files),
+		"Unexpected number of files")
 
-	files := strings.Split(generated, "// FilePath: ")
-	verified := 0
-	for _, file := range files {
-		index := strings.Index(file, "\n")
-		if index > 0 {
-			filePath := file[:index]
-			fileName := filepath.Base(filePath)
-			generated := file[index:]
-			generated = StripGenerated(generated)
-			// Test fixtures in Go
-			// https://dave.cheney.net/2016/05/10/test-fixtures-in-go
-			b, err := ioutil.ReadFile(filepath.Join("testdata", fileName))
-			require.NoError(t, err)
-			ref := string(b)
-			ref = StripGenerated(ref)
-			require.Equal(t, ref, generated,
-				fmt.Sprintf(
-					"generated should match pkg/cmdconfig/testdata/%s", fileName))
-			verified++
-		}
+	for _, file := range out.Files {
+		fileName := filepath.Base(file.Path)
+		generated := StripGenerated(file.Buf.String())
+		// Test fixtures in Go
+		// https://dave.cheney.net/2016/05/10/test-fixtures-in-go
+		b, err := ioutil.ReadFile(filepath.Join("testdata", fileName))
+		require.NoError(t, err)
+		ref := string(b)
+		ref = StripGenerated(ref)
+		require.Equal(t, ref, generated,
+			fmt.Sprintf(
+				"generated should match pkg/cmdconfig/testdata/%s", fileName))
 	}
-	require.Equal(t, 3, verified,
-		"Unexpected number of files verified")
 
 	// We've checked the generated code match the files in pkg/cmdconfig/testdata,
 	// now check the generated code works as expected...
@@ -221,7 +212,7 @@ func TestSetEnv(t *testing.T) {
 	in.Config, err = NewConfig(in.AppDir, in.Env, in.Prefix)
 	require.NoError(t, err)
 
-	buf, err := SetEnv(in)
+	buf, _, err := setEnv(in)
 	require.NoError(t, err)
 	s := buf.String()
 

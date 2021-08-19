@@ -6,7 +6,6 @@ import (
 	"encoding/json"
 	"flag"
 	"fmt"
-	"io"
 	"io/ioutil"
 	"os"
 	"path/filepath"
@@ -58,9 +57,6 @@ type CmdIn struct {
 	Env string
 	// Compare config file keys
 	Compare string
-	// Readers make testing easier
-	ConfigReader  io.Reader
-	CompareReader io.Reader
 	// Keys to update
 	Keys ArgMap
 	// Value to update
@@ -78,6 +74,13 @@ type CmdIn struct {
 	Base64 bool
 }
 
+type File struct {
+	// Path to file
+	Path string
+	// Buf for new file content
+	Buf *bytes.Buffer
+}
+
 // CmdOut for use with Cmd function
 type CmdOut struct {
 	// Cmd is the unique command that was executed
@@ -86,14 +89,16 @@ type CmdOut struct {
 	ExitCode int
 	// Buf of cmd output
 	Buf *bytes.Buffer
+	// Files to write if in.DryRun is not set
+	Files []File
 }
 
-// GetPath to config file
-func GetPath(appDir string, env string) (string, error) {
+// GetConfigFilePath helper
+func GetConfigFilePath(appDir string, env string) (string, error) {
 	if _, err := os.Stat(appDir); err != nil {
 		if os.IsNotExist(err) {
-			return "", fmt.Errorf(
-				"app dir does not exist %v", appDir)
+			return "", errors.WithStack(fmt.Errorf(
+				"app dir does not exist %v", appDir))
 		} else {
 			return "", errors.WithStack(err)
 		}
@@ -123,7 +128,7 @@ func RefreshKeys(c *Config) {
 // NewConfig reads a config file and sets the key map
 func NewConfig(appDir string, env string, prefix string) (c *Config, err error) {
 	// Read config file
-	configPath, err := GetPath(appDir, env)
+	configPath, err := GetConfigFilePath(appDir, env)
 	if err != nil {
 		return c, err
 	}
@@ -148,13 +153,13 @@ func NewConfig(appDir string, env string, prefix string) (c *Config, err error) 
 	return c, nil
 }
 
-// CompareKeys for config files
-func CompareKeys(in *CmdIn) (buf *bytes.Buffer, err error) {
+// compareKeys for config files
+func compareKeys(in *CmdIn) (buf *bytes.Buffer, files []File, err error) {
 	buf = new(bytes.Buffer)
 
 	compConfig, err := NewConfig(in.AppDir, in.Compare, in.Prefix)
 	if err != nil {
-		return buf, err
+		return buf, files, err
 	}
 
 	unmatched := make([]string, 0, len(in.Config.Keys)+len(compConfig.Keys))
@@ -177,7 +182,7 @@ func CompareKeys(in *CmdIn) (buf *bytes.Buffer, err error) {
 		buf.WriteString(fmt.Sprintf("%s%s", item, "\n"))
 	}
 
-	return buf, nil
+	return buf, files, nil
 }
 
 type GenerateKey struct {
@@ -209,9 +214,9 @@ type GenerateData struct {
 	KeyMap map[string]int
 }
 
-func NewGenerateData(in *CmdIn) (data GenerateData) {
+func NewGenerateData(in *CmdIn) (data *GenerateData) {
 	// Init
-	data = GenerateData{
+	data = &GenerateData{
 		Prefix: in.Prefix,
 		AppDir: in.AppDir,
 	}
@@ -315,108 +320,72 @@ func ToPrivate(str string) string {
 	return ""
 }
 
-// GenerateHelper generates helper files, config.go, template.go, etc.
+// executeTemplate executes the template for the specified file name and data
+func executeTemplate(in *CmdIn, fileName string, data *GenerateData) (
+	filePath string, buf *bytes.Buffer, err error) {
+
+	filePath = filepath.Join(in.AppDir, in.Generate, fileName)
+	textTemplate, err := GetTemplate(fileName)
+	if err != nil {
+		return filePath, buf, err
+	}
+	t := template.Must(
+		template.New(fmt.Sprintf("generate%s", fileName)).Parse(textTemplate))
+	buf = new(bytes.Buffer)
+	err = t.Execute(buf, &data)
+	if err != nil {
+		return filePath, buf, errors.WithStack(err)
+	}
+	return filePath, buf, nil
+}
+
+// generateHelpers generates helper files, config.go, template.go, etc.
 // These files can then be included by users in their own projects
 // when they import the config package at the path as per the "generate" flag
-func GenerateHelper(in *CmdIn) (buf *bytes.Buffer, err error) {
+func generateHelpers(in *CmdIn) (buf *bytes.Buffer, files []File, err error) {
 	// Generate data for executing template
 	data := NewGenerateData(in)
 
-	// Initialize return buf,
-	// for dry-run it will contain the generated text,
-	// otherwise it will contain paths to files that were written
-	buf = new(bytes.Buffer)
+	// NOTE buf is usually filled with content to be written to stdout.
+	// For the generate flag the contents of buf depends on the dry run flag,
+	// and that is checked elsewhere
 
-	// Generate config.go from template
-	filePath := filepath.Join(in.AppDir, in.Generate, "config.go")
-	t := template.Must(template.New("generateConfig").Parse(generateConfig))
-	generatedBuf := new(bytes.Buffer)
-	err = t.Execute(generatedBuf, &data)
+	// files contains file paths and generated code,
+	// depending on the dry run flag it may be written
+	// to stdout or the file system
+	files = make([]File, 3)
+
+	filePath, buf, err := executeTemplate(in, FileNameConfigGo, data)
 	if err != nil {
-		b, _ := json.MarshalIndent(data, "", "    ")
-		fmt.Printf("template data %s %v", "\n", string(b))
-		return generatedBuf, errors.WithStack(err)
+		return buf, files, err
 	}
-	if in.DryRun {
-		// Write file path and generated text to return buf
-		buf.WriteString("\n")
-		buf.WriteString(fmt.Sprintf("// FilePath: %s", filePath))
-		buf.Write(generatedBuf.Bytes())
-	} else {
-		// Update config.go
-		err = ioutil.WriteFile(
-			filePath,
-			generatedBuf.Bytes(),
-			0644)
-		if err != nil {
-			log.Fatal().Stack().Err(err).Msg("")
-		}
-		// Write file path to return buf
-		buf.WriteString(filePath)
+	files[0] = File{
+		Path: filePath,
+		Buf:  bytes.NewBuffer(buf.Bytes()),
 	}
 
-	// Generate template.go from template
-	filePath = filepath.Join(in.AppDir, in.Generate, "template.go")
-	t = template.Must(template.New("generateTemplate").Parse(generateTemplate))
-	generatedBuf = new(bytes.Buffer)
-	err = t.Execute(generatedBuf, &data)
+	filePath, buf, err = executeTemplate(in, FileNameTemplateGo, data)
 	if err != nil {
-		b, _ := json.MarshalIndent(data, "", "    ")
-		fmt.Printf("template data %s %v", "\n", string(b))
-		return generatedBuf, errors.WithStack(err)
+		return buf, files, err
 	}
-	if in.DryRun {
-		// Write file path and generated text to return buf
-		buf.WriteString("\n")
-		buf.WriteString(fmt.Sprintf("// FilePath: %s", filePath))
-		buf.Write(generatedBuf.Bytes())
-	} else {
-		// Write template.go
-		err = ioutil.WriteFile(
-			filePath,
-			generatedBuf.Bytes(),
-			0644)
-		if err != nil {
-			log.Fatal().Stack().Err(err).Msg("")
-		}
-		// Write file path to return buf
-		buf.WriteString("\n")
-		buf.WriteString(filePath)
+	files[1] = File{
+		Path: filePath,
+		Buf:  bytes.NewBuffer(buf.Bytes()),
 	}
 
-	// Generate fn.go from template
-	filePath = filepath.Join(in.AppDir, in.Generate, "fn.go")
-	t = template.Must(template.New("generateFn").Parse(generateFn))
-	generatedBuf = new(bytes.Buffer)
-	err = t.Execute(generatedBuf, &data)
+	filePath, buf, err = executeTemplate(in, FileNameFnGo, data)
 	if err != nil {
-		b, _ := json.MarshalIndent(data, "", "    ")
-		fmt.Printf("template data %s %v", "\n", string(b))
-		return generatedBuf, errors.WithStack(err)
+		return buf, files, err
 	}
-	if in.DryRun {
-		// Write file path and generated text to return buf
-		buf.WriteString("\n")
-		buf.WriteString(fmt.Sprintf("// FilePath: %s", filePath))
-		buf.Write(generatedBuf.Bytes())
-	} else {
-		// Write fn.go
-		err = ioutil.WriteFile(
-			filePath,
-			generatedBuf.Bytes(),
-			0644)
-		if err != nil {
-			log.Fatal().Stack().Err(err).Msg("")
-		}
-		// Write file path to return buf
-		buf.WriteString("\n")
-		buf.WriteString(filePath)
+	files[2] = File{
+		Path: filePath,
+		Buf:  bytes.NewBuffer(buf.Bytes()),
 	}
 
-	return buf, nil
+	return buf, files, nil
 }
 
-func UpdateConfig(in *CmdIn) (buf *bytes.Buffer, err error) {
+func updateConfig(in *CmdIn) (buf *bytes.Buffer, files []File, err error) {
 	buf = new(bytes.Buffer)
 
 	// Setup existing key value pairs
@@ -428,12 +397,12 @@ func UpdateConfig(in *CmdIn) (buf *bytes.Buffer, err error) {
 	// Validate input
 	for i, key := range in.Keys {
 		if !strings.HasPrefix(key, in.Prefix) {
-			return buf, errors.WithStack(
+			return buf, files, errors.WithStack(
 				fmt.Errorf("key must strart with prefix %v", in.Prefix))
 		}
 
 		if i > len(in.Values)-1 {
-			return buf, errors.WithStack(
+			return buf, files, errors.WithStack(
 				fmt.Errorf("missing value for key %v", key))
 		}
 		value := in.Values[i]
@@ -447,16 +416,16 @@ func UpdateConfig(in *CmdIn) (buf *bytes.Buffer, err error) {
 	// Marshal config JSON
 	b, err := json.MarshalIndent(m, "", "    ")
 	if err != nil {
-		return buf, errors.WithStack(err)
+		return buf, files, errors.WithStack(err)
 	}
 	buf.Write(b)
 
-	return buf, nil
+	return buf, files, nil
 }
 
 type EnvKeys map[string]bool
 
-func SetEnv(in *CmdIn) (buf *bytes.Buffer, err error) {
+func setEnv(in *CmdIn) (buf *bytes.Buffer, files []File, err error) {
 	// Create map of env vars starting with Prefix
 	envKeys := EnvKeys{}
 	for _, v := range os.Environ() {
@@ -493,21 +462,21 @@ func SetEnv(in *CmdIn) (buf *bytes.Buffer, err error) {
 		}
 	}
 
-	return buf, nil
+	return buf, files, nil
 }
 
-func CSV(in *CmdIn) (buf *bytes.Buffer, err error) {
+func generateCSV(in *CmdIn) (buf *bytes.Buffer, files []File, err error) {
 	buf = new(bytes.Buffer)
 
 	a := make([]string, len(in.Config.Keys))
 	for i, key := range in.Config.Keys {
 		value := in.Config.Map[key]
 		if strings.Contains(value, "\n") {
-			return buf, errors.WithStack(
+			return buf, files, errors.WithStack(
 				fmt.Errorf("values must not contain newlines"))
 		}
 		if strings.Contains(value, ",") {
-			return buf, errors.WithStack(
+			return buf, files, errors.WithStack(
 				fmt.Errorf("values must not contain commas"))
 		}
 		a[i] = fmt.Sprintf("%v=%v", key, value)
@@ -516,35 +485,35 @@ func CSV(in *CmdIn) (buf *bytes.Buffer, err error) {
 	// Do not use encoding/csv, the writer will append a newline
 	_, err = buf.WriteString(strings.Join(a, in.Sep))
 	if err != nil {
-		return buf, errors.WithStack(err)
+		return buf, files, errors.WithStack(err)
 	}
 
-	return buf, nil
+	return buf, files, nil
 }
 
-func Base64(in *CmdIn) (buf *bytes.Buffer, err error) {
+func encodeBase64(in *CmdIn) (buf *bytes.Buffer, files []File, err error) {
 	buf = new(bytes.Buffer)
 
 	b, err := json.Marshal(in.Config.Map)
 	if err != nil {
-		return buf, errors.WithStack(err)
+		return buf, files, errors.WithStack(err)
 	}
 	encoded := base64.StdEncoding.EncodeToString(b)
 	buf.Write([]byte(encoded))
 
-	return buf, nil
+	return buf, files, nil
 }
 
-func PrintValue(in *CmdIn) (buf *bytes.Buffer, err error) {
+func printValue(in *CmdIn) (buf *bytes.Buffer, files []File, err error) {
 	buf = new(bytes.Buffer)
 	key := in.PrintValue
 
 	if value, ok := in.Config.Map[key]; ok {
 		buf.WriteString(value)
-		return buf, nil
+		return buf, files, nil
 	}
 
-	return buf, errors.WithStack(
+	return buf, files, errors.WithStack(
 		fmt.Errorf("missing value for key %v", key))
 }
 
@@ -552,18 +521,19 @@ func Cmd(in *CmdIn) (out *CmdOut, err error) {
 	out = &CmdOut{}
 
 	if in.CSV {
-		// Get env CSV
-		buf, err := CSV(in)
+		// Generate CSV from env
+		buf, files, err := generateCSV(in)
 		if err != nil {
 			return out, err
 		}
 		out.Cmd = CmdCSV
 		out.Buf = buf
+		out.Files = files
 		return out, nil
 
 	} else if in.Compare != "" {
 		// Compare keys
-		buf, err := CompareKeys(in)
+		buf, files, err := compareKeys(in)
 		if err != nil {
 			return out, err
 		}
@@ -572,55 +542,61 @@ func Cmd(in *CmdIn) (out *CmdOut, err error) {
 		if out.Buf.Len() > 0 {
 			out.ExitCode = 1
 		}
+		out.Files = files
 		return out, nil
 
 	} else if in.Generate != "" {
 		// Generate config helper
-		buf, err := GenerateHelper(in)
+		buf, files, err := generateHelpers(in)
 		if err != nil {
 			return out, err
 		}
 		out.Cmd = CmdGenerate
 		out.Buf = buf
+		out.Files = files
 		return out, nil
 
 	} else if in.Base64 {
-		buf, err := Base64(in)
+		buf, files, err := encodeBase64(in)
 		if err != nil {
 			return out, err
 		}
 		out.Cmd = CmdBase64
 		out.Buf = buf
+		out.Files = files
 		return out, nil
 
 	} else if len(in.Keys) > 0 {
 		// Update config key value pairs
-		buf, err := UpdateConfig(in)
+		buf, files, err := updateConfig(in)
 		if err != nil {
 			return out, err
 		}
 		out.Cmd = CmdUpdateConfig
 		out.Buf = buf
+		out.Files = files
 		return out, nil
 
 	} else if in.PrintValue != "" {
-		buf, err := PrintValue(in)
+		buf, files, err := printValue(in)
 		if err != nil {
 			return out, err
 		}
 		out.Cmd = CmdGet
 		out.Buf = buf
+		out.Files = files
 		return out, nil
 	}
 
 	// Default
 	// Print set env commands
-	buf, err := SetEnv(in)
+	buf, files, err := setEnv(in)
 	if err != nil {
 		return out, err
 	}
 	out.Cmd = CmdSetEnv
 	out.Buf = buf
+	out.Files = files
 	return out, nil
 }
 
@@ -671,7 +647,7 @@ func (in *CmdIn) Process(out *CmdOut) {
 		if in.DryRun {
 			fmt.Println(out.Buf.String())
 		} else {
-			configPath, err := GetPath(in.AppDir, in.Env)
+			configPath, err := GetConfigFilePath(in.AppDir, in.Env)
 			if err != nil {
 				log.Fatal().Stack().Err(err).Msg("")
 			}
@@ -689,6 +665,33 @@ func (in *CmdIn) Process(out *CmdOut) {
 		os.Exit(out.ExitCode)
 
 	case CmdGenerate:
+		if out.Buf == nil {
+			out.Buf = new(bytes.Buffer)
+		}
+		if in.DryRun {
+			// Write file paths and generated text to out.Buf
+			for _, file := range out.Files {
+				out.Buf.WriteString("\n")
+				out.Buf.WriteString(fmt.Sprintf("// FilePath: %s", file.Path))
+				out.Buf.Write(file.Buf.Bytes())
+			}
+		} else {
+			for _, file := range out.Files {
+				// Create or update the file
+				err := ioutil.WriteFile(
+					file.Path, file.Buf.Bytes(), 0644)
+				if err != nil {
+					err = errors.WithStack(err)
+					log.Error().
+						Str("file_path", file.Path).
+						Stack().Err(err)
+					os.Exit(1)
+				}
+				// Write file path to out.Buf
+				out.Buf.WriteString(file.Path)
+				out.Buf.WriteString("\n")
+			}
+		}
 		fmt.Println(out.Buf.String())
 		os.Exit(out.ExitCode)
 
@@ -725,7 +728,8 @@ func Main() {
 	appDirKey := fmt.Sprintf("%sDIR", in.Prefix)
 	appDir := os.Getenv(appDirKey)
 	if appDir == "" {
-		fmt.Printf("%v env not set%s", appDirKey, "\n")
+		err := fmt.Errorf("%v env not set%s", appDirKey, "\n")
+		log.Error().Stack().Err(err).Msg("")
 		os.Exit(1)
 	}
 	in.AppDir = appDir
@@ -733,10 +737,11 @@ func Main() {
 	// Set config
 	config, err := NewConfig(in.AppDir, in.Env, in.Prefix)
 	if err != nil {
-		log.Fatal().
-			Str("APP_DIR", in.AppDir).
+		log.Error().
+			Str("app_dir", in.AppDir).
 			Str("env", in.Env).
 			Stack().Err(err).Msg("")
+		os.Exit(1)
 	}
 	in.Config = config
 
@@ -745,17 +750,45 @@ func Main() {
 	// Run cmd
 	out, err := Cmd(in)
 	if err != nil {
-		log.Fatal().Stack().Err(err).Msg("")
+		log.Error().Stack().Err(err).Msg("")
+		os.Exit(1)
 	}
 
 	// Process cmd results
 	in.Process(out)
 }
 
-// generateConfig text template to generate config.go file
-// standard way to recognize machine-generated files
+// FileNameConfigGo for config.go
+const FileNameConfigGo = "config.go"
+
+// FileNameTemplateGo for template.go
+const FileNameTemplateGo = "template.go"
+
+// FileNameFnGo for fn.go
+const FileNameFnGo = "fn.go"
+
+// GetTemplate returns the text template for the given file name.
+func GetTemplate(fileName string) (s string, err error) {
+	if fileName == FileNameConfigGo {
+		return templateConfigGo, nil
+	}
+
+	if fileName == FileNameTemplateGo {
+		return templateTemplateGo, nil
+	}
+
+	if fileName == FileNameFnGo {
+		return templateFnGo, nil
+	}
+
+	return s, errors.WithStack(
+		fmt.Errorf("invalid file name %s", fileName))
+}
+
+// templateConfigGo text template to generate FileNameConfigGo.
+// NOTE the "standard header" for recognizing machine-generated files
 // https://github.com/golang/go/issues/13560#issuecomment-276866852
-var generateConfig = `
+var templateConfigGo = `
 // Code generated with https://github.com/mozey/config DO NOT EDIT
 
 package config
@@ -880,8 +913,8 @@ func LoadFile(mode string) (conf *Config, err error) {
 }
 `
 
-// generateTemplate text template to generate template.go file
-var generateTemplate = `
+// templateTemplateGo text template to generate FileNameTemplateGo
+var templateTemplateGo = `
 // Code generated with https://github.com/mozey/config DO NOT EDIT
 
 package config
@@ -905,8 +938,8 @@ func (c *Config) Exec{{.Key}}({{.ExplicitParams}}) string {
 {{end}}
 `
 
-// generateFn text template to generate fn.go file
-var generateFn = `
+// templateFnGo text template to generate FileNameFnGo
+var templateFnGo = `
 package config
 
 import (
