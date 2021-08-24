@@ -39,13 +39,23 @@ func (a *ArgMap) Set(value string) error {
 	return nil
 }
 
-// Config file attributes
+// Config file attributes.
+// Note, this is not the same struct as the generated config.Config,
+// e.g. pkg/cmdconfig/testdata/config.go
+// The latter has properties for each config attribute in a project,
+// whereas this type is generic
 type Config struct {
 	// Map of key to value
 	Map map[string]string
 	// Keys sorted
 	Keys []string
 }
+
+// ConfigCache is used to avoid reading the same config file twice,
+// use full path to config file as the map key
+type ConfigCache map[string]*Config
+
+var configCache ConfigCache
 
 // CmdIn for use with command functions
 type CmdIn struct {
@@ -168,39 +178,55 @@ func RefreshKeys(c *Config) {
 	sort.Strings(c.Keys)
 }
 
-// NewConfig reads a config file and sets the key map
-func NewConfig(appDir string, env string, prefix string) (c *Config, err error) {
-	// Read config file
-	configPath, err := GetConfigFilePath(appDir, env)
+// NewConfig reads a config file and sets the key map.
+// If env is set on ConfigCache, use it, and avoid reading the file again
+func NewConfig(appDir string, env string) (configPath string, c *Config, err error) {
+	configPath, err = GetConfigFilePath(appDir, env)
 	if err != nil {
-		return c, err
-	}
-	b, err := ioutil.ReadFile(configPath)
-	if err != nil {
-		//log.Debug().Msgf("reading config at path %v", configPath)
-		return c, errors.WithStack(err)
+		return configPath, c, err
 	}
 
+	// Cached?
+	if configCache == nil {
+		// Init cache
+		configCache = make(ConfigCache)
+	} else {
+		var ok bool
+		if c, ok = configCache[configPath]; ok {
+			// Return cached config
+			return configPath, c, nil
+		}
+	}
+
+	// New config
 	c = &Config{}
+
+	// Read config file
+	b, err := ioutil.ReadFile(configPath)
+	if err != nil {
+		return configPath, c, errors.WithStack(err)
+	}
 
 	// Unmarshal config.
 	// The config file must have a flat key value structure
 	err = json.Unmarshal(b, &c.Map)
 	if err != nil {
-		//log.Debug().Msgf("unmarshal config at path %v", configPath)
-		return c, errors.WithStack(err)
+		return configPath, c, errors.WithStack(err)
 	}
 
 	RefreshKeys(c)
 
-	return c, nil
+	// Add to cache
+	configCache[configPath] = c
+
+	return configPath, c, nil
 }
 
 // compareKeys for config files
 func compareKeys(in *CmdIn) (buf *bytes.Buffer, files []File, err error) {
 	buf = new(bytes.Buffer)
 
-	compConfig, err := NewConfig(in.AppDir, in.Compare, in.Prefix)
+	_, compConfig, err := NewConfig(in.AppDir, in.Compare)
 	if err != nil {
 		return buf, files, err
 	}
@@ -428,40 +454,75 @@ func generateHelpers(in *CmdIn) (buf *bytes.Buffer, files []File, err error) {
 	return buf, files, nil
 }
 
-func updateConfig(in *CmdIn) (buf *bytes.Buffer, files []File, err error) {
-	buf = new(bytes.Buffer)
+// refreshConfigByEnv replaces the given key value pairs in the specified env,
+// and returns sorted JSON that can be used to replace the config file contents
+func refreshConfigByEnv(appDir string, prefix string, env string, keys ArgMap, values ArgMap) (
+	configPath string, b []byte, err error) {
+
+	// Read config for the given env from file, or load from cache
+	configPath, conf, err := NewConfig(appDir, env)
+	if err != nil {
+		return configPath, b, err
+	}
 
 	// Setup existing key value pairs
 	m := make(map[string]string)
-	for _, key := range in.Config.Keys {
-		m[key] = in.Config.Map[key]
+	for _, key := range conf.Keys {
+		m[key] = conf.Map[key]
 	}
 
 	// Validate input
-	for i, key := range in.Keys {
-		if !strings.HasPrefix(key, in.Prefix) {
-			return buf, files, errors.WithStack(
-				fmt.Errorf("key must strart with prefix %v", in.Prefix))
+	for i, key := range keys {
+		if !strings.HasPrefix(key, prefix) {
+			return configPath, b, errors.WithStack(
+				fmt.Errorf(
+					"key for env %s must strart with prefix %s", env, prefix))
 		}
 
-		if i > len(in.Values)-1 {
-			return buf, files, errors.WithStack(
-				fmt.Errorf("missing value for key %v", key))
+		if i > len(values)-1 {
+			return configPath, b, errors.WithStack(
+				fmt.Errorf("env %s missing value for key %s", env, key))
 		}
-		value := in.Values[i]
+		value := values[i]
 
 		// Update key value pairs
-		//log.Debug().Msgf("Config %v %v=%v", *in.Env, key, value)
 		m[key] = value
-		RefreshKeys(in.Config)
+		RefreshKeys(conf)
 	}
 
 	// Marshal config JSON
-	b, err := json.MarshalIndent(m, "", "    ")
+	b, err = json.MarshalIndent(m, "", "    ")
 	if err != nil {
-		return buf, files, errors.WithStack(err)
+		return configPath, b, errors.WithStack(err)
 	}
-	buf.Write(b)
+
+	return configPath, b, nil
+}
+
+func updateConfig(in *CmdIn) (buf *bytes.Buffer, files []File, err error) {
+	buf = new(bytes.Buffer)
+	var b []byte
+
+	if in.All {
+		// TODO If in.All is set then use GetEnvs
+		// to call updateConfigByEnv for all envs
+		// files = make([]File, 3)
+	} else if in.Env == "*" {
+	} else if in.Env == "sample.*" {
+
+	} else {
+		files = make([]File, 1)
+		var configPath string
+		configPath, b, err = refreshConfigByEnv(
+			in.AppDir, in.Prefix, in.Env, in.Keys, in.Values)
+		if err != nil {
+			return buf, files, err
+		}
+		files[0] = File{
+			Path: configPath,
+			Buf:  bytes.NewBuffer(b),
+		}
+	}
 
 	return buf, files, nil
 }
@@ -648,8 +709,9 @@ func ParseFlags() *CmdIn {
 
 	// Flags
 	flag.StringVar(&in.Prefix, "prefix", "APP_", "Config key prefix")
-	flag.StringVar(&in.Env, "env", "dev", "Config file to use")
-	flag.BoolVar(&in.All, "all", false, "Apply to all config files")
+	flag.StringVar(&in.Env, "env", "dev",
+		"Config file to use, also supports wildcards * and sample.*")
+	flag.BoolVar(&in.All, "all", false, "Apply to all config files and samples")
 	// Default must be empty
 	flag.StringVar(&in.Compare, CmdCompare, "", "Compare config file keys")
 	in.Keys = ArgMap{}
@@ -687,9 +749,10 @@ func (in *CmdIn) Process(out *CmdOut) {
 		os.Exit(out.ExitCode)
 
 	case CmdUpdateConfig:
+		// TODO Revise this
 		// Print config
 		if in.DryRun {
-			fmt.Println(out.Buf.String())
+			fmt.Println(out.Files[0].Buf.String())
 		} else {
 			configPath, err := GetConfigFilePath(in.AppDir, in.Env)
 			if err != nil {
@@ -701,7 +764,7 @@ func (in *CmdIn) Process(out *CmdOut) {
 				log.Fatal().Stack().Err(err).Msg("")
 			}
 			perm := info.Mode() // Preserve existing mode
-			err = ioutil.WriteFile(configPath, out.Buf.Bytes(), perm)
+			err = ioutil.WriteFile(configPath, out.Files[0].Buf.Bytes(), perm)
 			if err != nil {
 				log.Fatal().Stack().Err(err).Msg("")
 			}
@@ -779,11 +842,10 @@ func Main() {
 	in.AppDir = appDir
 
 	// Set config
-	config, err := NewConfig(in.AppDir, in.Env, in.Prefix)
+	configPath, config, err := NewConfig(in.AppDir, in.Env)
 	if err != nil {
 		log.Error().
-			Str("app_dir", in.AppDir).
-			Str("env", in.Env).
+			Str("config_path", configPath).
 			Stack().Err(err).Msg("")
 		os.Exit(1)
 	}

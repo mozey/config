@@ -47,6 +47,11 @@ Set a key value in `config.dev.json`
 
     ${GOPATH}/bin/configu -key APP_FOO -value xxx
 
+Set a key value for all `config.*.json` 
+and `sample.config.*.json` files in APP_DIR
+
+    ${GOPATH}/bin/configu -all -key APP_FOO -value xxx
+
 
 ## Toggling env
 
@@ -107,7 +112,7 @@ The `configu` cmd uses `config.dev.json` by default.
 
 Create `config.prod.json` and set a key
 
-    cp ./config.prod.sample.json ./config.prod.json
+    cp ./sample.config.prod.json ./config.prod.json
 
     configu -env prod -key APP_BEER -value pilsner
 
@@ -168,7 +173,7 @@ Update testdata if required (after adding new features)
 
 Create `config.dev.json`
 
-    cp ./config.dev.sample.json ./config.dev.json
+    cp ./sample.config.dev.json ./config.dev.json
 
 Run the `configu` cmd.
 By default, echo `config.dev.json`,

@@ -76,7 +76,7 @@ func TestCompareKeys(t *testing.T) {
 	in.Prefix = "APP_"
 	in.Env = env
 	in.Compare = compare
-	in.Config, err = NewConfig(in.AppDir, in.Env, in.Prefix)
+	_, in.Config, err = NewConfig(in.AppDir, in.Env)
 	require.NoError(t, err)
 
 	out, err := Cmd(in)
@@ -109,7 +109,7 @@ func TestGenerateHelper(t *testing.T) {
 	// Path to generate config helper,
 	// dry run is set so existing file won't be overwritten
 	in.Generate = filepath.Join("pkg", "cmdconfig", "testdata")
-	in.Config, err = NewConfig("testdata", in.Env, in.Prefix)
+	_, in.Config, err = NewConfig("testdata", in.Env)
 	require.NoError(t, err)
 
 	out, err := Cmd(in)
@@ -168,7 +168,7 @@ func TestUpdateConfig(t *testing.T) {
 	in.Env = env
 	in.Keys = ArgMap{"APP_FOO", "APP_bar"}
 	in.Values = ArgMap{"update 1", "update 2"}
-	in.Config, err = NewConfig(in.AppDir, in.Env, in.Prefix)
+	_, in.Config, err = NewConfig(in.AppDir, in.Env)
 	require.NoError(t, err)
 
 	out, err := Cmd(in)
@@ -178,7 +178,7 @@ func TestUpdateConfig(t *testing.T) {
 	log.Debug().Msg(out.Buf.String())
 
 	m := make(map[string]string)
-	err = json.Unmarshal(out.Buf.Bytes(), &m)
+	err = json.Unmarshal(out.Files[0].Buf.Bytes(), &m)
 	require.NoError(t, err)
 	require.Empty(t, m["APP_DIR"], "APP_DIR must not be set in config file")
 	require.Equal(t, "update 1", m["APP_FOO"])
@@ -209,7 +209,7 @@ func TestSetEnv(t *testing.T) {
 	in.AppDir = tmp
 	in.Prefix = "APP_"
 	in.Env = env
-	in.Config, err = NewConfig(in.AppDir, in.Env, in.Prefix)
+	_, in.Config, err = NewConfig(in.AppDir, in.Env)
 	require.NoError(t, err)
 
 	buf, _, err := setEnv(in)
@@ -247,7 +247,7 @@ func TestCSV(t *testing.T) {
 	in.AppDir = tmp
 	in.Prefix = "APP_"
 	in.Env = env
-	in.Config, err = NewConfig(in.AppDir, in.Env, in.Prefix)
+	_, in.Config, err = NewConfig(in.AppDir, in.Env)
 	require.NoError(t, err)
 	in.CSV = true
 
@@ -286,7 +286,7 @@ func TestBase64(t *testing.T) {
 	in.Prefix = "APP_"
 	in.Env = env
 	in.Base64 = true
-	in.Config, err = NewConfig(in.AppDir, in.Env, in.Prefix)
+	_, in.Config, err = NewConfig(in.AppDir, in.Env)
 	require.NoError(t, err)
 
 	out, err := Cmd(in)
@@ -321,7 +321,7 @@ func TestGet(t *testing.T) {
 	in.AppDir = tmp
 	in.Prefix = "APP_"
 	in.Env = env
-	in.Config, err = NewConfig(in.AppDir, in.Env, in.Prefix)
+	_, in.Config, err = NewConfig(in.AppDir, in.Env)
 	require.NoError(t, err)
 
 	in.PrintValue = "APP_FOO"
@@ -445,33 +445,32 @@ func TestGetEnvs(t *testing.T) {
 		_ = os.RemoveAll(tmp)
 	})()
 
-	env := "dev"
 	err = ioutil.WriteFile(
-		filepath.Join(tmp, fmt.Sprintf("config.%v.json", env)),
+		filepath.Join(tmp, "config.dev.json"),
 		[]byte(`{}`),
 		0644)
 	require.NoError(t, err)
 	err = ioutil.WriteFile(
-		filepath.Join(tmp, fmt.Sprintf("sample.config.%v.json", env)),
-		[]byte(`{}`),
-		0644)
-	require.NoError(t, err)
-	env = "prod"
-	err = ioutil.WriteFile(
-		filepath.Join(tmp, fmt.Sprintf("config.%v.json", env)),
+		filepath.Join(tmp, "sample.config.dev.json"),
 		[]byte(`{}`),
 		0644)
 	require.NoError(t, err)
 	err = ioutil.WriteFile(
-		filepath.Join(tmp, fmt.Sprintf("sample.config.%v.json", env)),
+		filepath.Join(tmp, "config.prod.json"),
+		[]byte(`{}`),
+		0644)
+	require.NoError(t, err)
+	err = ioutil.WriteFile(
+		filepath.Join(tmp, "sample.config.prod.json"),
 		[]byte(`{}`),
 		0644)
 	require.NoError(t, err)
 
 	envs, err := GetEnvs(tmp, false)
 	require.NoError(t, err)
-	fmt.Println(envs)
+	require.Equal(t, []string{"dev", "prod"}, envs)
+
 	envs, err = GetEnvs(tmp, true)
 	require.NoError(t, err)
-	fmt.Println(envs)
+	require.Equal(t, []string{"sample.dev", "sample.prod"}, envs)
 }
