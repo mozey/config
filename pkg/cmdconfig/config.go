@@ -107,6 +107,34 @@ type File struct {
 
 type Files []File
 
+// Print file paths and contents to buf
+func (files Files) Print(buf *bytes.Buffer) {
+	for _, file := range files {
+		buf.WriteString("\n")
+		buf.WriteString(fmt.Sprintf("// FilePath: %s", file.Path))
+		buf.Write(file.Buf.Bytes())
+	}
+}
+
+// Save file contents to disk, and print paths to buf
+func (files Files) Save(buf *bytes.Buffer) {
+	// TODO Use goroutines to save files concurrently
+	for _, file := range files {
+		err := os.WriteFile(
+			file.Path, file.Buf.Bytes(), 0644)
+		if err != nil {
+			err = errors.WithStack(err)
+			log.Error().
+				Str("file_path", file.Path).
+				Stack().Err(err)
+			os.Exit(1)
+		}
+		// Print file path only
+		buf.WriteString(file.Path)
+		buf.WriteString("\n")
+	}
+}
+
 // CmdOut for use with Cmd function
 type CmdOut struct {
 	// Cmd is the unique command that was executed
@@ -782,6 +810,8 @@ func ParseFlags() *CmdIn {
 // For example, this is where results are printed to stdout or disk IO happens,
 // depending on the whether the in.DryRun flag was set
 func (in *CmdIn) Process(out *CmdOut) {
+	// TODO Replace Conditionals With Polymorphism?
+	// http://www.jerf.org/iri/post/2945
 	switch out.Cmd {
 	case CmdSetEnv:
 		// .....................................................................
@@ -804,29 +834,13 @@ func (in *CmdIn) Process(out *CmdOut) {
 				fmt.Println(out.Files[0].Buf.String())
 			} else {
 				// Otherwise print file paths and contents
-				for _, file := range out.Files {
-					out.Buf.WriteString("\n")
-					out.Buf.WriteString(fmt.Sprintf("// FilePath: %s", file.Path))
-					out.Buf.Write(file.Buf.Bytes())
-				}
+				out.Files.Print(out.Buf)
 			}
 		} else {
-			for _, file := range out.Files {
-				// Create or update the file
-				err := os.WriteFile(
-					file.Path, file.Buf.Bytes(), 0644)
-				if err != nil {
-					err = errors.WithStack(err)
-					log.Error().
-						Str("file_path", file.Path).
-						Stack().Err(err)
-					os.Exit(1)
-				}
-				// Print file path only
-				out.Buf.WriteString(file.Path)
-				out.Buf.WriteString("\n")
-			}
+			// Create or update the files
+			out.Files.Save(out.Buf)
 		}
+		fmt.Println(out.Buf.String())
 		os.Exit(out.ExitCode)
 
 	case CmdGenerate:
@@ -836,27 +850,10 @@ func (in *CmdIn) Process(out *CmdOut) {
 		}
 		if in.DryRun {
 			// Print file paths and generated text
-			for _, file := range out.Files {
-				out.Buf.WriteString("\n")
-				out.Buf.WriteString(fmt.Sprintf("// FilePath: %s", file.Path))
-				out.Buf.Write(file.Buf.Bytes())
-			}
+			out.Files.Print(out.Buf)
 		} else {
-			for _, file := range out.Files {
-				// Create or update the file
-				err := os.WriteFile(
-					file.Path, file.Buf.Bytes(), 0644)
-				if err != nil {
-					err = errors.WithStack(err)
-					log.Error().
-						Str("file_path", file.Path).
-						Stack().Err(err)
-					os.Exit(1)
-				}
-				// Print file path only
-				out.Buf.WriteString(file.Path)
-				out.Buf.WriteString("\n")
-			}
+			// Create or update the files
+			out.Files.Save(out.Buf)
 		}
 		fmt.Println(out.Buf.String())
 		os.Exit(out.ExitCode)

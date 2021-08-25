@@ -19,7 +19,6 @@ import (
 	// matches wat is actually generated. Therefore, this package can be
 	// imported to test the generated code works as expected
 	config "github.com/mozey/config/pkg/cmdconfig/testdata"
-	"github.com/rs/zerolog/log"
 	"github.com/stretchr/testify/require"
 )
 
@@ -175,7 +174,6 @@ func TestUpdateConfig(t *testing.T) {
 	require.NoError(t, err)
 	require.Equal(t, CmdUpdateConfig, out.Cmd)
 	require.Equal(t, 0, out.ExitCode)
-	log.Debug().Msg(out.Buf.String())
 
 	m := make(map[string]string)
 	err = json.Unmarshal(out.Files[0].Buf.Bytes(), &m)
