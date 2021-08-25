@@ -19,14 +19,19 @@ import (
 	"github.com/rs/zerolog/log"
 )
 
+// .............................................................................
+// TODO Rethink naming of the constants below
+
 const CmdBase64 = "base64"
 const CmdCompare = "compare"
 const CmdCSV = "csv"
-const CmdDryRun = "dry-run"
+const CmdDryRun = "dry-run" // TODO This isn't a command as such...
 const CmdGenerate = "generate"
 const CmdSetEnv = "set-env"
 const CmdGet = "get"
 const CmdUpdateConfig = "update-config"
+
+// .............................................................................
 
 // ArgMap for parsing flags with multiple keys
 type ArgMap []string
@@ -38,6 +43,8 @@ func (a *ArgMap) Set(value string) error {
 	*a = append(*a, value)
 	return nil
 }
+
+// .............................................................................
 
 // Config file attributes.
 // Note, this is not the same struct as the generated config.Config,
@@ -56,6 +63,8 @@ type Config struct {
 type ConfigCache map[string]*Config
 
 var configCache ConfigCache
+
+// .............................................................................
 
 // CmdIn for use with command functions
 type CmdIn struct {
@@ -87,12 +96,16 @@ type CmdIn struct {
 	Base64 bool
 }
 
+// .............................................................................
+
 type File struct {
 	// Path to file
 	Path string
 	// Buf for new file content
 	Buf *bytes.Buffer
 }
+
+type Files []File
 
 // CmdOut for use with Cmd function
 type CmdOut struct {
@@ -103,8 +116,10 @@ type CmdOut struct {
 	// Buf of cmd output
 	Buf *bytes.Buffer
 	// Files to write if in.DryRun is not set
-	Files []File
+	Files Files
 }
+
+// .............................................................................
 
 // GetEnvs globs all config files in APP_DIR to list possible values of env
 func GetEnvs(appDir string, includeSamples bool) (envs []string, err error) {
@@ -168,6 +183,7 @@ func GetConfigFilePath(appDir string, env string) (string, error) {
 		appDir, fmt.Sprintf("%vconfig.%v.json", sample, env)), nil
 }
 
+// TODO This should be a method on Config?
 func RefreshKeys(c *Config) {
 	c.Keys = nil
 	// Set config keys
@@ -222,6 +238,8 @@ func NewConfig(appDir string, env string) (configPath string, c *Config, err err
 	return configPath, c, nil
 }
 
+// .............................................................................
+
 // compareKeys for config files
 func compareKeys(in *CmdIn) (buf *bytes.Buffer, files []File, err error) {
 	buf = new(bytes.Buffer)
@@ -253,6 +271,9 @@ func compareKeys(in *CmdIn) (buf *bytes.Buffer, files []File, err error) {
 
 	return buf, files, nil
 }
+
+// .............................................................................
+// TODO Move this to pkg/cmdconfig/generate.go
 
 type GenerateKey struct {
 	KeyPrefix  string
@@ -454,6 +475,8 @@ func generateHelpers(in *CmdIn) (buf *bytes.Buffer, files []File, err error) {
 	return buf, files, nil
 }
 
+// .............................................................................
+
 // refreshConfigByEnv replaces the given key value pairs in the specified env,
 // and returns sorted JSON that can be used to replace the config file contents
 func refreshConfigByEnv(appDir string, prefix string, env string, keys ArgMap, values ArgMap) (
@@ -527,6 +550,8 @@ func updateConfig(in *CmdIn) (buf *bytes.Buffer, files []File, err error) {
 	return buf, files, nil
 }
 
+// .............................................................................
+
 type EnvKeys map[string]bool
 
 func setEnv(in *CmdIn) (buf *bytes.Buffer, files []File, err error) {
@@ -569,6 +594,8 @@ func setEnv(in *CmdIn) (buf *bytes.Buffer, files []File, err error) {
 	return buf, files, nil
 }
 
+// .............................................................................
+
 func generateCSV(in *CmdIn) (buf *bytes.Buffer, files []File, err error) {
 	buf = new(bytes.Buffer)
 
@@ -595,6 +622,8 @@ func generateCSV(in *CmdIn) (buf *bytes.Buffer, files []File, err error) {
 	return buf, files, nil
 }
 
+// .............................................................................
+
 func encodeBase64(in *CmdIn) (buf *bytes.Buffer, files []File, err error) {
 	buf = new(bytes.Buffer)
 
@@ -607,6 +636,8 @@ func encodeBase64(in *CmdIn) (buf *bytes.Buffer, files []File, err error) {
 
 	return buf, files, nil
 }
+
+// .............................................................................
 
 func printValue(in *CmdIn) (buf *bytes.Buffer, files []File, err error) {
 	buf = new(bytes.Buffer)
@@ -621,6 +652,10 @@ func printValue(in *CmdIn) (buf *bytes.Buffer, files []File, err error) {
 		fmt.Errorf("missing value for key %v", key))
 }
 
+// .............................................................................
+// TODO Move this to pkg/cmdconfig/cmd.go
+
+// Cmd runs a command given flags and input from the user
 func Cmd(in *CmdIn) (out *CmdOut, err error) {
 	out = &CmdOut{}
 
@@ -704,6 +739,10 @@ func Cmd(in *CmdIn) (out *CmdOut, err error) {
 	return out, nil
 }
 
+// .............................................................................
+// TODO Move this to pkg/cmdconfig/main.go
+
+// ParseFlags before calling Cmd
 func ParseFlags() *CmdIn {
 	in := CmdIn{}
 
@@ -736,19 +775,28 @@ func ParseFlags() *CmdIn {
 	return &in
 }
 
+// .............................................................................
+// TODO Move this to pkg/cmdconfig/cmd.go
+
+// Process the output of the Cmd func.
+// For example, this is where results are printed to stdout or disk IO happens,
+// depending on the whether the in.DryRun flag was set
 func (in *CmdIn) Process(out *CmdOut) {
 	switch out.Cmd {
 	case CmdSetEnv:
+		// .....................................................................
 		// Print set and unset env commands
 		fmt.Print(out.Buf.String())
 		os.Exit(out.ExitCode)
 
 	case CmdGet:
+		// .....................................................................
 		// Print value for the given key
 		fmt.Print(out.Buf.String())
 		os.Exit(out.ExitCode)
 
 	case CmdUpdateConfig:
+		// .....................................................................
 		// TODO Revise this
 		// Print config
 		if in.DryRun {
@@ -772,6 +820,7 @@ func (in *CmdIn) Process(out *CmdOut) {
 		os.Exit(out.ExitCode)
 
 	case CmdGenerate:
+		// .....................................................................
 		if out.Buf == nil {
 			out.Buf = new(bytes.Buffer)
 		}
@@ -803,18 +852,24 @@ func (in *CmdIn) Process(out *CmdOut) {
 		os.Exit(out.ExitCode)
 
 	case CmdCompare:
+		// .....................................................................
 		fmt.Print(out.Buf.String())
 		os.Exit(out.ExitCode)
 
 	case CmdCSV:
+		// .....................................................................
 		fmt.Print(out.Buf.String())
 		os.Exit(out.ExitCode)
 
 	case CmdBase64:
+		// .....................................................................
 		fmt.Print(out.Buf.String())
 		os.Exit(out.ExitCode)
 	}
 }
+
+// .............................................................................
+// TODO Move this to pkg/cmdconfig/main.go
 
 // Main can be executed by default.
 // For custom flags and CMDs copy the code below.
@@ -864,6 +919,9 @@ func Main() {
 	in.Process(out)
 }
 
+// .............................................................................
+// Template funcs
+
 // FileNameConfigGo for config.go
 const FileNameConfigGo = "config.go"
 
@@ -890,6 +948,9 @@ func GetTemplate(fileName string) (s string, err error) {
 	return s, errors.WithStack(
 		fmt.Errorf("invalid file name %s", fileName))
 }
+
+// .............................................................................
+// Template strings
 
 // templateConfigGo text template to generate FileNameConfigGo.
 // NOTE the "standard header" for recognizing machine-generated files
