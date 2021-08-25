@@ -797,24 +797,34 @@ func (in *CmdIn) Process(out *CmdOut) {
 
 	case CmdUpdateConfig:
 		// .....................................................................
-		// TODO Revise this
-		// Print config
 		if in.DryRun {
-			fmt.Println(out.Files[0].Buf.String())
+			// If there is only one config file to update,
+			// then print the "new" contents
+			if len(out.Files) == 1 {
+				fmt.Println(out.Files[0].Buf.String())
+			} else {
+				// Otherwise print file paths and contents
+				for _, file := range out.Files {
+					out.Buf.WriteString("\n")
+					out.Buf.WriteString(fmt.Sprintf("// FilePath: %s", file.Path))
+					out.Buf.Write(file.Buf.Bytes())
+				}
+			}
 		} else {
-			configPath, err := GetConfigFilePath(in.AppDir, in.Env)
-			if err != nil {
-				log.Fatal().Stack().Err(err).Msg("")
-			}
-			// Update config file
-			info, err := os.Stat(configPath)
-			if err != nil {
-				log.Fatal().Stack().Err(err).Msg("")
-			}
-			perm := info.Mode() // Preserve existing mode
-			err = ioutil.WriteFile(configPath, out.Files[0].Buf.Bytes(), perm)
-			if err != nil {
-				log.Fatal().Stack().Err(err).Msg("")
+			for _, file := range out.Files {
+				// Create or update the file
+				err := os.WriteFile(
+					file.Path, file.Buf.Bytes(), 0644)
+				if err != nil {
+					err = errors.WithStack(err)
+					log.Error().
+						Str("file_path", file.Path).
+						Stack().Err(err)
+					os.Exit(1)
+				}
+				// Print file path only
+				out.Buf.WriteString(file.Path)
+				out.Buf.WriteString("\n")
 			}
 		}
 		os.Exit(out.ExitCode)
@@ -825,7 +835,7 @@ func (in *CmdIn) Process(out *CmdOut) {
 			out.Buf = new(bytes.Buffer)
 		}
 		if in.DryRun {
-			// Write file paths and generated text to out.Buf
+			// Print file paths and generated text
 			for _, file := range out.Files {
 				out.Buf.WriteString("\n")
 				out.Buf.WriteString(fmt.Sprintf("// FilePath: %s", file.Path))
@@ -834,7 +844,7 @@ func (in *CmdIn) Process(out *CmdOut) {
 		} else {
 			for _, file := range out.Files {
 				// Create or update the file
-				err := ioutil.WriteFile(
+				err := os.WriteFile(
 					file.Path, file.Buf.Bytes(), 0644)
 				if err != nil {
 					err = errors.WithStack(err)
@@ -843,7 +853,7 @@ func (in *CmdIn) Process(out *CmdOut) {
 						Stack().Err(err)
 					os.Exit(1)
 				}
-				// Write file path to out.Buf
+				// Print file path only
 				out.Buf.WriteString(file.Path)
 				out.Buf.WriteString("\n")
 			}
