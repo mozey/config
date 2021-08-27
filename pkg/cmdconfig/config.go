@@ -126,13 +126,16 @@ type CmdOut struct {
 
 // .............................................................................
 
+// ListSamples if set, otherwise list non-samples
+type ListSamples bool
+
 // GetEnvs globs all config files in APP_DIR to list possible values of env
-func GetEnvs(appDir string, includeSamples bool) (envs []string, err error) {
+func GetEnvs(appDir string, samples ListSamples) (envs []string, err error) {
 	envs = make([]string, 0)
 
 	// Find matching files
 	fileNamePattern := "config.*.json"
-	if includeSamples {
+	if samples {
 		fileNamePattern = "sample.config.*.json"
 	}
 	pattern := filepath.Join(appDir, fileNamePattern)
@@ -328,23 +331,50 @@ func refreshConfigByEnv(appDir string, prefix string, env string, keys ArgMap, v
 func updateConfig(in *CmdIn) (buf *bytes.Buffer, files []File, err error) {
 	buf = new(bytes.Buffer)
 	var b []byte
+	var envs []string
 
 	if in.All {
-		// TODO If in.All is set then use GetEnvs
-		// to call updateConfigByEnv for all envs
-		// files = make([]File, 3)
-	} else if in.Env == "*" {
-	} else if in.Env == "sample.*" {
-
-	} else {
-		files = make([]File, 1)
-		var configPath string
-		configPath, b, err = refreshConfigByEnv(
-			in.AppDir, in.Prefix, in.Env, in.Keys, in.Values)
+		// All config files (non-sample and sample)
+		e, err := GetEnvs(in.AppDir, ListSamples(false))
 		if err != nil {
 			return buf, files, err
 		}
-		files[0] = File{
+		envs = append(envs, e...)
+		e, err = GetEnvs(in.AppDir, ListSamples(true))
+		if err != nil {
+			return buf, files, err
+		}
+		envs = append(envs, e...)
+
+	} else if in.Env == "*" {
+		// Wildcard for non-sample config files
+		envs, err = GetEnvs(in.AppDir, ListSamples(false))
+		if err != nil {
+			return buf, files, err
+		}
+
+	} else if in.Env == "sample.*" {
+		// Wildcard for sample config files
+		envs, err = GetEnvs(in.AppDir, ListSamples(true))
+		if err != nil {
+			return buf, files, err
+		}
+
+	} else {
+		// Only the config file as per the env flag
+		envs = append(envs, in.Env)
+	}
+
+	// Refresh config for the listed envs
+	files = make([]File, len(envs))
+	for i, env := range envs {
+		var configPath string
+		configPath, b, err = refreshConfigByEnv(
+			in.AppDir, in.Prefix, env, in.Keys, in.Values)
+		if err != nil {
+			return buf, files, err
+		}
+		files[i] = File{
 			Path: configPath,
 			Buf:  bytes.NewBuffer(b),
 		}

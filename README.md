@@ -268,7 +268,7 @@ All keys must start with the **same prefix**.
 Keys are case sensitive,
 and it's advised to make keys **all uppercase**.
 
-Use **SNAKE_CASE**.
+Use (uppercase) **SNAKE_CASE**.
 
 Assuming the default key prefix `APP_`,
 **avoid keys that start with**

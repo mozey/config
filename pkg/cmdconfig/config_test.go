@@ -10,6 +10,7 @@ import (
 	"os"
 	"path/filepath"
 	"runtime"
+	"strings"
 	"testing"
 	"text/template"
 	"time"
@@ -86,7 +87,7 @@ func TestCompareKeys(t *testing.T) {
 		out.Buf.String())
 }
 
-func TestUpdateConfig(t *testing.T) {
+func TestUpdateConfigSingle(t *testing.T) {
 	tmp, err := ioutil.TempDir("", "mozey-config")
 	require.NoError(t, err)
 	defer (func() {
@@ -123,6 +124,100 @@ func TestUpdateConfig(t *testing.T) {
 	// 2021-08-15 Use keys exactly as per config file
 	// require.Empty(t, m["APP_bar"], "keys must be uppercase")
 	require.Equal(t, "update 2", m["APP_bar"])
+}
+
+func TestUpdateConfigMulti(t *testing.T) {
+	tmp, err := ioutil.TempDir("", "mozey-config")
+	require.NoError(t, err)
+	defer (func() {
+		_ = os.RemoveAll(tmp)
+	})()
+
+	// Create config files...
+	test0 := "xxx"
+
+	env := "dev"
+	// Non-sample
+	err = ioutil.WriteFile(
+		filepath.Join(tmp, fmt.Sprintf("config.%v.json", env)),
+		[]byte(`{"APP_FOO": "xxx"}`),
+		0644)
+	require.NoError(t, err)
+	// Sample
+	err = ioutil.WriteFile(
+		filepath.Join(tmp, fmt.Sprintf("sample.config.%v.json", env)),
+		[]byte(`{"APP_FOO": "xxx"}`),
+		0644)
+	require.NoError(t, err)
+
+	env = "prod"
+	// Non-sample
+	err = ioutil.WriteFile(
+		filepath.Join(tmp, fmt.Sprintf("config.%v.json", env)),
+		[]byte(`{"APP_FOO": "xxx"}`),
+		0644)
+	require.NoError(t, err)
+	// Sample
+	err = ioutil.WriteFile(
+		filepath.Join(tmp, fmt.Sprintf("sample.config.%v.json", env)),
+		[]byte(`{"APP_FOO": "xxx"}`),
+		0644)
+	require.NoError(t, err)
+
+	// .........................................................................
+	test1 := "Only the file as the env flag"
+	in := &CmdIn{}
+	in.AppDir = tmp
+	in.Prefix = "APP_"
+	in.Env = "dev"
+	in.Keys = ArgMap{"APP_FOO"}
+	in.Values = ArgMap{test1}
+	_, in.Config, err = NewConfig(in.AppDir, in.Env)
+	require.NoError(t, err)
+	out, err := Cmd(in)
+	require.NoError(t, err)
+	require.Equal(t, CmdUpdateConfig, out.Cmd)
+	require.Equal(t, 0, out.ExitCode)
+	for _, file := range out.Files {
+		m := make(map[string]string)
+		err = json.Unmarshal(file.Buf.Bytes(), &m)
+		require.NoError(t, err)
+		if strings.Contains(file.Path, "config.dev.json") {
+			require.Equal(t, test1, m["APP_FOO"])
+		} else {
+			require.Equal(t, test0, m["APP_FOO"])
+		}
+	}
+
+	// .........................................................................
+	test2 := "Only the non-sample files"
+	in = &CmdIn{}
+	in.AppDir = tmp
+	in.Prefix = "APP_"
+	in.Env = "*"
+	in.Keys = ArgMap{"APP_FOO"}
+	in.Values = ArgMap{test1}
+	// TODO Don't pre-emptively set in.Config?
+	// Also refactor pgk/cmdconfig/main.go
+	_, in.Config, err = NewConfig(in.AppDir, in.Env)
+	require.NoError(t, err)
+	out, err = Cmd(in)
+	require.NoError(t, err)
+	require.Equal(t, CmdUpdateConfig, out.Cmd)
+	require.Equal(t, 0, out.ExitCode)
+	for _, file := range out.Files {
+		m := make(map[string]string)
+		err = json.Unmarshal(file.Buf.Bytes(), &m)
+		require.NoError(t, err)
+		if strings.Contains(file.Path, "sample.config") {
+			require.Equal(t, test0, m["APP_FOO"])
+		} else if strings.Contains(file.Path, "config.dev.json") {
+			require.Equal(t, test1, m["APP_FOO"])
+		} else {
+			require.Equal(t, test2, m["APP_FOO"])
+		}
+	}
+
 }
 
 func TestSetEnv(t *testing.T) {
