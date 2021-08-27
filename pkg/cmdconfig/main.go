@@ -121,5 +121,9 @@ func Main() {
 	}
 
 	// Process cmd results
-	in.Process(out)
+	exitCode, err := in.Process(out)
+	if err != nil {
+		log.Error().Stack().Err(err).Msg("")
+	}
+	os.Exit(exitCode)
 }

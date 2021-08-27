@@ -169,7 +169,7 @@ func executeTemplate(in *CmdIn, fileName string, data *GenerateData) (
 // generateHelpers generates helper files, config.go, template.go, etc.
 // These files can then be included by users in their own projects
 // when they import the config package at the path as per the "generate" flag
-func generateHelpers(in *CmdIn) (buf *bytes.Buffer, files []File, err error) {
+func generateHelpers(in *CmdIn) (files []File, err error) {
 	// Generate data for executing template
 	data := NewGenerateData(in)
 
@@ -184,7 +184,7 @@ func generateHelpers(in *CmdIn) (buf *bytes.Buffer, files []File, err error) {
 
 	filePath, buf, err := executeTemplate(in, FileNameConfigGo, data)
 	if err != nil {
-		return buf, files, err
+		return files, err
 	}
 	files[0] = File{
 		Path: filePath,
@@ -193,7 +193,7 @@ func generateHelpers(in *CmdIn) (buf *bytes.Buffer, files []File, err error) {
 
 	filePath, buf, err = executeTemplate(in, FileNameTemplateGo, data)
 	if err != nil {
-		return buf, files, err
+		return files, err
 	}
 	files[1] = File{
 		Path: filePath,
@@ -202,12 +202,12 @@ func generateHelpers(in *CmdIn) (buf *bytes.Buffer, files []File, err error) {
 
 	filePath, buf, err = executeTemplate(in, FileNameFnGo, data)
 	if err != nil {
-		return buf, files, err
+		return files, err
 	}
 	files[2] = File{
 		Path: filePath,
 		Buf:  bytes.NewBuffer(buf.Bytes()),
 	}
 
-	return buf, files, nil
+	return files, nil
 }

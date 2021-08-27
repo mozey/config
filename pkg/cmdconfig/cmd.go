@@ -3,7 +3,6 @@ package cmdconfig
 import (
 	"bytes"
 	"fmt"
-	"os"
 )
 
 const (
@@ -19,6 +18,9 @@ const (
 // Cmd runs a command given flags and input from the user
 func Cmd(in *CmdIn) (out *CmdOut, err error) {
 	out = &CmdOut{}
+
+	// Explicit empty value by default
+	out.ExitCode = 0
 
 	if in.CSV {
 		// Generate CSV from env
@@ -47,12 +49,12 @@ func Cmd(in *CmdIn) (out *CmdOut, err error) {
 
 	} else if in.Generate != "" {
 		// Generate config helper
-		buf, files, err := generateHelpers(in)
+		files, err := generateHelpers(in)
 		if err != nil {
 			return out, err
 		}
 		out.Cmd = CmdGenerate
-		out.Buf = buf
+		out.Buf = bytes.NewBuffer([]byte(""))
 		out.Files = files
 		return out, nil
 
@@ -103,19 +105,17 @@ func Cmd(in *CmdIn) (out *CmdOut, err error) {
 // Process the output of the Cmd func.
 // For example, this is where results are printed to stdout or disk IO happens,
 // depending on the whether the in.DryRun flag was set
-func (in *CmdIn) Process(out *CmdOut) {
+func (in *CmdIn) Process(out *CmdOut) (exitCode int, err error) {
 	switch out.Cmd {
 	case CmdSetEnv:
 		// .....................................................................
 		// Print set and unset env commands
 		fmt.Print(out.Buf.String())
-		os.Exit(out.ExitCode)
 
 	case CmdGet:
 		// .....................................................................
 		// Print value for the given key
 		fmt.Print(out.Buf.String())
-		os.Exit(out.ExitCode)
 
 	case CmdUpdateConfig:
 		// .....................................................................
@@ -130,39 +130,42 @@ func (in *CmdIn) Process(out *CmdOut) {
 			}
 		} else {
 			// Create or update the files
-			out.Files.Save(out.Buf)
+			err := out.Files.Save(out.Buf)
+			if err != nil {
+				return 1, err
+			}
 		}
 		fmt.Println(out.Buf.String())
-		os.Exit(out.ExitCode)
 
 	case CmdGenerate:
 		// .....................................................................
-		if out.Buf == nil {
-			out.Buf = new(bytes.Buffer)
-		}
 		if in.DryRun {
 			// Print file paths and generated text
 			out.Files.Print(out.Buf)
 		} else {
 			// Create or update the files
-			out.Files.Save(out.Buf)
+			err := out.Files.Save(out.Buf)
+			if err != nil {
+				return 1, err
+			}
 		}
 		fmt.Println(out.Buf.String())
-		os.Exit(out.ExitCode)
 
 	case CmdCompare:
 		// .....................................................................
+		// Print keys not matching
 		fmt.Print(out.Buf.String())
-		os.Exit(out.ExitCode)
 
 	case CmdCSV:
 		// .....................................................................
+		// Print key value CSV
 		fmt.Print(out.Buf.String())
-		os.Exit(out.ExitCode)
 
 	case CmdBase64:
 		// .....................................................................
+		// Print base64 encoded config
 		fmt.Print(out.Buf.String())
-		os.Exit(out.ExitCode)
 	}
+
+	return out.ExitCode, nil
 }

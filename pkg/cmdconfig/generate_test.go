@@ -19,20 +19,26 @@ func stripGenerated(generated string) string {
 	return generated
 }
 
-func TestGenerateHelper(t *testing.T) {
+func TestGenerateHelpersPrint(t *testing.T) {
 	var err error
 
 	appDir := os.Getenv("APP_DIR")
 	require.NotEmpty(t, appDir, "APP_DIR must not be empty")
 
 	in := &CmdIn{}
-	in.AppDir = appDir
-	in.DryRun = true
+	in.DryRun = true // Do not write files to disk
 	in.Prefix = "APP_"
 	in.Env = "dev"
-	// Path to generate config helper,
-	// dry run is set so existing file won't be overwritten
+
+	// Path to generate config helpers is not used since dry run is set.
+	// Compare with TestGenerateHelpers
 	in.Generate = filepath.Join("pkg", "cmdconfig", "testdata")
+
+	in.AppDir = filepath.Join(appDir, in.Generate)
+
+	// Use pkg/cmdconfig/testdata/config.dev.json
+	// See "Test fixtures in Go"
+	// https://dave.cheney.net/2016/05/10/test-fixtures-in-go
 	_, in.Config, err = NewConfig("testdata", in.Env)
 	require.NoError(t, err)
 
@@ -46,8 +52,6 @@ func TestGenerateHelper(t *testing.T) {
 	for _, file := range out.Files {
 		fileName := filepath.Base(file.Path)
 		generated := stripGenerated(file.Buf.String())
-		// Test fixtures in Go
-		// https://dave.cheney.net/2016/05/10/test-fixtures-in-go
 		b, err := ioutil.ReadFile(filepath.Join("testdata", fileName))
 		require.NoError(t, err)
 		ref := string(b)
@@ -69,4 +73,59 @@ func TestGenerateHelper(t *testing.T) {
 	require.Equal(t, "bar", c.Bar())
 	require.Equal(t, "Buzz", c.Buz())
 	require.Equal(t, "FizzBuzz-FizzBuzz", c.ExecTemplateFiz("-FizzBuzz"))
+}
+
+// TestGenerateHelpersSave also covers Files_Save
+func TestGenerateHelpersSave(t *testing.T) {
+	tmp, err := ioutil.TempDir("", "mozey-config")
+	require.NoError(t, err)
+	defer (func() {
+		_ = os.RemoveAll(tmp)
+	})()
+
+	in := &CmdIn{}
+	in.AppDir = tmp
+	in.DryRun = false // Test writing files to disk
+	in.Prefix = "APP_"
+	in.Env = "dev"
+
+	// Convention is to keep the helpers in YOUR_PROJECTS_APP_DIR/pkg/config
+	in.Generate = filepath.Join("pkg", "config")
+
+	// Use pkg/cmdconfig/testdata/config.dev.json
+	_, in.Config, err = NewConfig("testdata", in.Env)
+	require.NoError(t, err)
+
+	out, err := Cmd(in)
+	require.NoError(t, err)
+	require.Equal(t, CmdGenerate, out.Cmd)
+	require.Equal(t, 0, out.ExitCode)
+	require.Equal(t, 3, len(out.Files),
+		"Unexpected number of files")
+
+	// Write the files
+	// TODO in.Process call fmt.Println,
+	// temporarily capture stdout to avoid cluttering test output?
+	// See https://github.com/mozey/go-capturer
+	exitCode, err := in.Process(out)
+	require.NoError(t, err)
+	require.Equal(t, 0, exitCode)
+
+	for _, file := range out.Files {
+		fileName := filepath.Base(file.Path)
+
+		// Read generated file from disk
+		b, err := ioutil.ReadFile(filepath.Join(tmp, in.Generate, fileName))
+		require.NoError(t, err)
+		generated := stripGenerated(string(b))
+
+		// Compare with testdata
+		b, err = ioutil.ReadFile(filepath.Join("testdata", fileName))
+		require.NoError(t, err)
+		ref := string(b)
+		ref = stripGenerated(ref)
+		require.Equal(t, ref, generated,
+			fmt.Sprintf(
+				"generated should match pkg/cmdconfig/testdata/%s", fileName))
+	}
 }

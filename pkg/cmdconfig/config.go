@@ -89,22 +89,27 @@ func (files Files) Print(buf *bytes.Buffer) {
 }
 
 // Save file contents to disk, and print paths to buf
-func (files Files) Save(buf *bytes.Buffer) {
+func (files Files) Save(buf *bytes.Buffer) (err error) {
 	// TODO Use goroutines to save files concurrently
 	for _, file := range files {
-		err := os.WriteFile(
-			file.Path, file.Buf.Bytes(), 0644)
+		// Make sure parent dirs exist
+		err := os.MkdirAll(filepath.Dir(file.Path), 0755)
 		if err != nil {
-			err = errors.WithStack(err)
-			log.Error().
-				Str("file_path", file.Path).
-				Stack().Err(err)
-			os.Exit(1)
+			log.Debug().Str("file_path", file.Path).Msg("")
+			return errors.WithStack(err)
+		}
+		// Write the file
+		err = os.WriteFile(file.Path, file.Buf.Bytes(), 0644)
+		if err != nil {
+			log.Debug().Str("file_path", file.Path).Msg("")
+			return errors.WithStack(err)
 		}
 		// Print file path only
 		buf.WriteString(file.Path)
 		buf.WriteString("\n")
 	}
+
+	return nil
 }
 
 // CmdOut for use with Cmd function
@@ -240,7 +245,8 @@ func NewConfig(appDir string, env string) (configPath string, c *Config, err err
 
 // .............................................................................
 
-// compareKeys for config files
+// compareKeys for config files,
+// buf (if not empty) contains keys that didn't match
 func compareKeys(in *CmdIn) (buf *bytes.Buffer, files []File, err error) {
 	buf = new(bytes.Buffer)
 
