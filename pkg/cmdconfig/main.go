@@ -20,33 +20,56 @@ func (a *ArgMap) Set(value string) error {
 	return nil
 }
 
+const (
+	FlagAll      = "all"
+	FlagBase64   = "base64"
+	FlagCompare  = "compare"
+	FlagCSV      = "csv"
+	FlagDryRun   = "dry-run"
+	FlagEnv      = "env"
+	FlagGenerate = "generate"
+	FlagGet      = "get"
+	FlagKey      = "key"
+	FlagPrefix   = "prefix"
+	FlagSep      = "sep"
+	FlagValue    = "value"
+)
+
 // ParseFlags before calling Cmd
 func ParseFlags() *CmdIn {
 	in := CmdIn{}
 
 	// Flags
-	flag.StringVar(&in.Prefix, "prefix", "APP_", "Config key prefix")
-	flag.StringVar(&in.Env, "env", "dev",
+	flag.StringVar(&in.Prefix,
+		FlagPrefix, "APP_", "Config key prefix")
+	flag.StringVar(&in.Env,
+		FlagEnv, "dev",
 		"Config file to use, also supports wildcards * and sample.*")
-	flag.BoolVar(&in.All, "all", false, "Apply to all config files and samples")
+	flag.BoolVar(&in.All,
+		FlagAll, false, "Apply to all config files and samples")
 	// Default must be empty
-	flag.StringVar(&in.Compare, CmdCompare, "", "Compare config file keys")
+	flag.StringVar(&in.Compare,
+		FlagCompare, "", "Compare config file keys")
 	in.Keys = ArgMap{}
-	flag.Var(&in.Keys, "key", "Set key and print config JSON")
+	flag.Var(&in.Keys,
+		FlagKey, "Set key and print config JSON")
 	in.Values = ArgMap{}
-	flag.Var(&in.Values, "value", "Value for last key specified")
+	flag.Var(&in.Values,
+		FlagValue, "Value for last key specified")
 	// Default must be empty
-	flag.StringVar(&in.PrintValue, CmdGet, "", "Print value for given key")
+	flag.StringVar(&in.PrintValue,
+		FlagGet, "", "Print value for given key")
 	// Default must be empty
 	flag.StringVar(&in.Generate,
-		CmdGenerate, "", "Generate config helper at path")
+		FlagGenerate, "", "Generate config helper at path")
 	flag.BoolVar(&in.CSV,
-		CmdCSV, false, "Print env as a list of key=value")
-	flag.StringVar(&in.Sep, "sep", ",", "Separator for use with csv flag")
+		FlagCSV, false, "Print env as a list of key=value")
+	flag.StringVar(&in.Sep,
+		FlagSep, ",", "Separator for use with csv flag")
 	flag.BoolVar(&in.DryRun,
-		CmdDryRun, false, "Don't write files, just print result")
+		FlagDryRun, false, "Don't write files, just print result")
 	flag.BoolVar(&in.Base64,
-		CmdBase64, false, "Encode config file as base64 string")
+		FlagBase64, false, "Encode config file as base64 string")
 
 	flag.Parse()
 

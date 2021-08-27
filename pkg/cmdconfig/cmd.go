@@ -6,15 +6,15 @@ import (
 	"os"
 )
 
-// TODO Rethink these
-const CmdBase64 = "base64"
-const CmdCompare = "compare"
-const CmdCSV = "csv"
-const CmdDryRun = "dry-run" // TODO This isn't a command as such...
-const CmdGenerate = "generate"
-const CmdSetEnv = "set-env"
-const CmdGet = "get"
-const CmdUpdateConfig = "update-config"
+const (
+	CmdBase64       = "base64"
+	CmdCompare      = "compare"
+	CmdCSV          = "csv"
+	CmdGenerate     = "generate"
+	CmdGet          = "get"
+	CmdSetEnv       = "set-env"
+	CmdUpdateConfig = "update-config"
+)
 
 // Cmd runs a command given flags and input from the user
 func Cmd(in *CmdIn) (out *CmdOut, err error) {
