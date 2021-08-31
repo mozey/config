@@ -75,8 +75,6 @@ func TestCompareKeys(t *testing.T) {
 	in.Prefix = "APP_"
 	in.Env = env
 	in.Compare = compare
-	_, in.Config, err = NewConfig(in.AppDir, in.Env)
-	require.NoError(t, err)
 
 	out, err := Cmd(in)
 	require.NoError(t, err)
@@ -108,8 +106,6 @@ func TestUpdateConfigSingle(t *testing.T) {
 	in.Env = env
 	in.Keys = ArgMap{"APP_FOO", "APP_bar"}
 	in.Values = ArgMap{"update 1", "update 2"}
-	_, in.Config, err = NewConfig(in.AppDir, in.Env)
-	require.NoError(t, err)
 
 	out, err := Cmd(in)
 	require.NoError(t, err)
@@ -172,8 +168,6 @@ func TestUpdateConfigMulti(t *testing.T) {
 	in.Env = "dev"
 	in.Keys = ArgMap{"APP_FOO"}
 	in.Values = ArgMap{test1}
-	_, in.Config, err = NewConfig(in.AppDir, in.Env)
-	require.NoError(t, err)
 	out, err := Cmd(in)
 	require.NoError(t, err)
 	require.Equal(t, CmdUpdateConfig, out.Cmd)
@@ -197,10 +191,6 @@ func TestUpdateConfigMulti(t *testing.T) {
 	in.Env = "*"
 	in.Keys = ArgMap{"APP_FOO"}
 	in.Values = ArgMap{test1}
-	// TODO Don't pre-emptively set in.Config?
-	// Also refactor pgk/cmdconfig/main.go
-	_, in.Config, err = NewConfig(in.AppDir, in.Env)
-	require.NoError(t, err)
 	out, err = Cmd(in)
 	require.NoError(t, err)
 	require.Equal(t, CmdUpdateConfig, out.Cmd)
@@ -242,8 +232,6 @@ func TestSetEnv(t *testing.T) {
 	in.AppDir = tmp
 	in.Prefix = "APP_"
 	in.Env = env
-	_, in.Config, err = NewConfig(in.AppDir, in.Env)
-	require.NoError(t, err)
 
 	buf, _, err := setEnv(in)
 	require.NoError(t, err)
@@ -280,8 +268,6 @@ func TestCSV(t *testing.T) {
 	in.AppDir = tmp
 	in.Prefix = "APP_"
 	in.Env = env
-	_, in.Config, err = NewConfig(in.AppDir, in.Env)
-	require.NoError(t, err)
 	in.CSV = true
 
 	in.Sep = ","
@@ -319,8 +305,6 @@ func TestBase64(t *testing.T) {
 	in.Prefix = "APP_"
 	in.Env = env
 	in.Base64 = true
-	_, in.Config, err = NewConfig(in.AppDir, in.Env)
-	require.NoError(t, err)
 
 	out, err := Cmd(in)
 	require.NoError(t, err)
@@ -354,8 +338,6 @@ func TestGet(t *testing.T) {
 	in.AppDir = tmp
 	in.Prefix = "APP_"
 	in.Env = env
-	_, in.Config, err = NewConfig(in.AppDir, in.Env)
-	require.NoError(t, err)
 
 	in.PrintValue = "APP_FOO"
 	out, err := Cmd(in)

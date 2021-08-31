@@ -41,16 +41,21 @@ type GenerateData struct {
 	KeyMap map[string]int
 }
 
-func NewGenerateData(in *CmdIn) (data *GenerateData) {
+func NewGenerateData(in *CmdIn) (data *GenerateData, err error) {
 	// Init
 	data = &GenerateData{
 		Prefix: in.Prefix,
 		AppDir: in.AppDir,
 	}
 
+	_, config, err := NewConfig(in.AppDir, in.Env)
+	if err != nil {
+		return data, err
+	}
+
 	// APP_DIR is usually not set in the config.json file
-	keys := make([]string, len(in.Config.Keys))
-	copy(keys, in.Config.Keys)
+	keys := make([]string, len(config.Keys))
+	copy(keys, config.Keys)
 	keys = append(keys, fmt.Sprintf("%vDIR", in.Prefix))
 
 	data.Keys = make([]GenerateKey, len(keys))
@@ -83,7 +88,7 @@ func NewGenerateData(in *CmdIn) (data *GenerateData) {
 		templateKey := TemplateKey{
 			GenerateKey: generateKey,
 		}
-		params := GetTemplateParams(in.Config.Map[generateKey.KeyPrefix])
+		params := GetTemplateParams(config.Map[generateKey.KeyPrefix])
 		explicitParams := make([]string, 0)
 		for _, param := range params {
 			keyPrivate := ToPrivate(param)
@@ -107,7 +112,7 @@ func NewGenerateData(in *CmdIn) (data *GenerateData) {
 		data.TemplateKeys = append(data.TemplateKeys, templateKey)
 	}
 
-	return data
+	return data, nil
 }
 
 // GetTemplateParams from template, e.g.
@@ -171,7 +176,10 @@ func executeTemplate(in *CmdIn, fileName string, data *GenerateData) (
 // when they import the config package at the path as per the "generate" flag
 func generateHelpers(in *CmdIn) (files []File, err error) {
 	// Generate data for executing template
-	data := NewGenerateData(in)
+	data, err := NewGenerateData(in)
+	if err != nil {
+		return files, err
+	}
 
 	// NOTE buf is usually filled with content to be written to stdout.
 	// For the generate flag the contents of buf depends on the dry run flag,

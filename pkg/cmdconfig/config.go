@@ -59,11 +59,9 @@ type CmdIn struct {
 	PrintValue string
 	// Generate config helper
 	Generate string
-	// Config file for Env
-	Config *Config
-	CSV    bool
-	Sep    string
-	DryRun bool
+	CSV      bool
+	Sep      string
+	DryRun   bool
 	// Base64 encode config file
 	Base64 bool
 }
@@ -228,6 +226,9 @@ func NewConfig(appDir string, env string) (configPath string, c *Config, err err
 	// Read config file
 	b, err := ioutil.ReadFile(configPath)
 	if err != nil {
+		log.Error().
+			Str("config_path", configPath).
+			Stack().Err(err).Msg("")
 		return configPath, c, errors.WithStack(err)
 	}
 
@@ -253,21 +254,25 @@ func NewConfig(appDir string, env string) (configPath string, c *Config, err err
 func compareKeys(in *CmdIn) (buf *bytes.Buffer, files []File, err error) {
 	buf = new(bytes.Buffer)
 
+	_, config, err := NewConfig(in.AppDir, in.Env)
+	if err != nil {
+		return buf, files, err
+	}
 	_, compConfig, err := NewConfig(in.AppDir, in.Compare)
 	if err != nil {
 		return buf, files, err
 	}
 
-	unmatched := make([]string, 0, len(in.Config.Keys)+len(compConfig.Keys))
+	unmatched := make([]string, 0, len(config.Keys)+len(compConfig.Keys))
 
 	// Compare config keys
-	for _, item := range in.Config.Keys {
+	for _, item := range config.Keys {
 		if _, ok := compConfig.Map[item]; !ok {
 			unmatched = append(unmatched, item)
 		}
 	}
 	for _, item := range compConfig.Keys {
-		if _, ok := in.Config.Map[item]; !ok {
+		if _, ok := config.Map[item]; !ok {
 			unmatched = append(unmatched, item)
 		}
 	}
@@ -388,6 +393,11 @@ func updateConfig(in *CmdIn) (buf *bytes.Buffer, files []File, err error) {
 type EnvKeys map[string]bool
 
 func setEnv(in *CmdIn) (buf *bytes.Buffer, files []File, err error) {
+	_, config, err := NewConfig(in.AppDir, in.Env)
+	if err != nil {
+		return buf, files, err
+	}
+
 	// Create map of env vars starting with Prefix
 	envKeys := EnvKeys{}
 	for _, v := range os.Environ() {
@@ -403,8 +413,8 @@ func setEnv(in *CmdIn) (buf *bytes.Buffer, files []File, err error) {
 	buf = new(bytes.Buffer)
 
 	// Commands to set env
-	for _, key := range in.Config.Keys {
-		buf.WriteString(fmt.Sprintf(ExportFormat, key, in.Config.Map[key]))
+	for _, key := range config.Keys {
+		buf.WriteString(fmt.Sprintf(ExportFormat, key, config.Map[key]))
 		buf.WriteString("\n")
 		envKeys[key] = false
 	}
@@ -432,9 +442,14 @@ func setEnv(in *CmdIn) (buf *bytes.Buffer, files []File, err error) {
 func generateCSV(in *CmdIn) (buf *bytes.Buffer, files []File, err error) {
 	buf = new(bytes.Buffer)
 
-	a := make([]string, len(in.Config.Keys))
-	for i, key := range in.Config.Keys {
-		value := in.Config.Map[key]
+	_, config, err := NewConfig(in.AppDir, in.Env)
+	if err != nil {
+		return buf, files, err
+	}
+
+	a := make([]string, len(config.Keys))
+	for i, key := range config.Keys {
+		value := config.Map[key]
 		if strings.Contains(value, "\n") {
 			return buf, files, errors.WithStack(
 				fmt.Errorf("values must not contain newlines"))
@@ -460,7 +475,12 @@ func generateCSV(in *CmdIn) (buf *bytes.Buffer, files []File, err error) {
 func encodeBase64(in *CmdIn) (buf *bytes.Buffer, files []File, err error) {
 	buf = new(bytes.Buffer)
 
-	b, err := json.Marshal(in.Config.Map)
+	_, config, err := NewConfig(in.AppDir, in.Env)
+	if err != nil {
+		return buf, files, err
+	}
+
+	b, err := json.Marshal(config.Map)
 	if err != nil {
 		return buf, files, errors.WithStack(err)
 	}
@@ -476,7 +496,12 @@ func printValue(in *CmdIn) (buf *bytes.Buffer, files []File, err error) {
 	buf = new(bytes.Buffer)
 	key := in.PrintValue
 
-	if value, ok := in.Config.Map[key]; ok {
+	_, config, err := NewConfig(in.AppDir, in.Env)
+	if err != nil {
+		return buf, files, err
+	}
+
+	if value, ok := config.Map[key]; ok {
 		buf.WriteString(value)
 		return buf, files, nil
 	}

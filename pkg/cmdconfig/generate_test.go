@@ -36,12 +36,6 @@ func TestGenerateHelpersPrint(t *testing.T) {
 
 	in.AppDir = filepath.Join(appDir, in.Generate)
 
-	// Use pkg/cmdconfig/testdata/config.dev.json
-	// See "Test fixtures in Go"
-	// https://dave.cheney.net/2016/05/10/test-fixtures-in-go
-	_, in.Config, err = NewConfig("testdata", in.Env)
-	require.NoError(t, err)
-
 	out, err := Cmd(in)
 	require.NoError(t, err)
 	require.Equal(t, CmdGenerate, out.Cmd)
@@ -52,6 +46,8 @@ func TestGenerateHelpersPrint(t *testing.T) {
 	for _, file := range out.Files {
 		fileName := filepath.Base(file.Path)
 		generated := stripGenerated(file.Buf.String())
+		// See "Test fixtures in Go"
+		// https://dave.cheney.net/2016/05/10/test-fixtures-in-go
 		b, err := ioutil.ReadFile(filepath.Join("testdata", fileName))
 		require.NoError(t, err)
 		ref := string(b)
@@ -92,8 +88,14 @@ func TestGenerateHelpersSave(t *testing.T) {
 	// Convention is to keep the helpers in YOUR_PROJECTS_APP_DIR/pkg/config
 	in.Generate = filepath.Join("pkg", "config")
 
-	// Use pkg/cmdconfig/testdata/config.dev.json
-	_, in.Config, err = NewConfig("testdata", in.Env)
+	// Copy config file from testdata to tmp dir.
+	// See "Test fixtures in Go"
+	// https://dave.cheney.net/2016/05/10/test-fixtures-in-go
+	configFilePath, err := GetConfigFilePath("testdata", in.Env)
+	require.NoError(t, err)
+	dstConfigFilePath, err := GetConfigFilePath(tmp, in.Env)
+	require.NoError(t, err)
+	err = Copy(configFilePath, dstConfigFilePath)
 	require.NoError(t, err)
 
 	out, err := Cmd(in)

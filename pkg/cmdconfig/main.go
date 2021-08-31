@@ -101,16 +101,6 @@ func Main() {
 	}
 	in.AppDir = appDir
 
-	// Set config
-	configPath, config, err := NewConfig(in.AppDir, in.Env)
-	if err != nil {
-		log.Error().
-			Str("config_path", configPath).
-			Stack().Err(err).Msg("")
-		os.Exit(1)
-	}
-	in.Config = config
-
 	// Run custom commands here...
 
 	// Run cmd
