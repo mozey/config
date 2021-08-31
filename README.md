@@ -16,11 +16,11 @@ Manage env vars with a flat `config.ENV.json` file, default `ENV=dev`
 
 ## Quick start
 
-Install pre-compiled, download appropriate link below
-- [Linux 386](https://github.com/mozey/config/releases/download/v0.3.3/configu)
-- [Windows 386](https://github.com/mozey/config/releases/download/v0.3.3/configu.exe)
-
 Install from source
+
+**WARNING** Do not run the command below inside a working copy of this repo,
+or inside any folder this is a "go module", i.e. has a `go.mod` file,
+otherwise the install won't work
 
     go get -u github.com/mozey/config/...
 
@@ -206,6 +206,10 @@ Then use the local command
 ## Windows
 
 Install
+
+**WARNING** Do not run the command below inside a working copy of this repo,
+or inside any folder this is a "go module", i.e. has a `go.mod` file,
+otherwise the install won't work
 
     go get -u github.com/mozey/config/...
 
