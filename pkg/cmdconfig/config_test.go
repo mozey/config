@@ -19,7 +19,6 @@ import (
 	// matches wat is actually generated. Therefore, this package can be
 	// imported to test the generated code works as expected
 	config "github.com/mozey/config/pkg/cmdconfig/testdata"
-	"github.com/rs/zerolog/log"
 	"github.com/stretchr/testify/require"
 )
 
@@ -40,12 +39,12 @@ func randString(n int) string {
 
 func TestGetPath(t *testing.T) {
 	appDir := randString(8)
-	_, err := GetPath(appDir, "")
+	_, err := GetConfigFilePath(appDir, "")
 	require.Error(t, err, "assumed path does not exist ", appDir)
 
 	appDir = "/"
 	env := "foo"
-	p, err := GetPath(appDir, env)
+	p, err := GetConfigFilePath(appDir, env)
 	require.NoError(t, err)
 	require.Equal(t, filepath.Join(appDir, fmt.Sprintf("config.%v.json", env)), p)
 }
@@ -76,8 +75,6 @@ func TestCompareKeys(t *testing.T) {
 	in.Prefix = "APP_"
 	in.Env = env
 	in.Compare = compare
-	in.Config, err = NewConfig(in.AppDir, in.Env, in.Prefix)
-	require.NoError(t, err)
 
 	out, err := Cmd(in)
 	require.NoError(t, err)
@@ -88,75 +85,7 @@ func TestCompareKeys(t *testing.T) {
 		out.Buf.String())
 }
 
-func StripGenerated(generated string) string {
-	generated = strings.Replace(generated, " ", "", -1)
-	generated = strings.Replace(generated, "\t", "", -1)
-	generated = strings.Replace(generated, "\n", "", -1)
-	return generated
-}
-
-func TestGenerateHelper(t *testing.T) {
-	var err error
-
-	appDir := os.Getenv("APP_DIR")
-	require.NotEmpty(t, appDir)
-
-	in := &CmdIn{}
-	in.AppDir = appDir
-	in.DryRun = true
-	in.Prefix = "APP_"
-	in.Env = "dev"
-	// Path to generate config helper,
-	// dry run is set so existing file won't be overwritten
-	in.Generate = filepath.Join("pkg", "cmdconfig", "testdata")
-	in.Config, err = NewConfig("testdata", in.Env, in.Prefix)
-	require.NoError(t, err)
-
-	out, err := Cmd(in)
-	require.NoError(t, err)
-	require.Equal(t, CmdGenerate, out.Cmd)
-	require.Equal(t, 0, out.ExitCode)
-	generated := out.Buf.String()
-
-	files := strings.Split(generated, "// FilePath: ")
-	verified := 0
-	for _, file := range files {
-		index := strings.Index(file, "\n")
-		if index > 0 {
-			filePath := file[:index]
-			fileName := filepath.Base(filePath)
-			generated := file[index:]
-			generated = StripGenerated(generated)
-			// Test fixtures in Go
-			// https://dave.cheney.net/2016/05/10/test-fixtures-in-go
-			b, err := ioutil.ReadFile(filepath.Join("testdata", fileName))
-			require.NoError(t, err)
-			ref := string(b)
-			ref = StripGenerated(ref)
-			require.Equal(t, ref, generated,
-				fmt.Sprintf(
-					"generated should match pkg/cmdconfig/testdata/%s", fileName))
-			verified++
-		}
-	}
-	require.Equal(t, 3, verified,
-		"Unexpected number of files verified")
-
-	// We've checked the generated code match the files in pkg/cmdconfig/testdata,
-	// now check the generated code works as expected...
-	err = os.Setenv("APP_DIR", filepath.Join(appDir, in.Generate))
-	require.NoError(t, err)
-	c, err := config.LoadFile("dev")
-	require.NoError(t, err)
-	err = os.Setenv("APP_DIR", appDir)
-	require.NoError(t, err)
-	require.Equal(t, "foo", c.Foo())
-	require.Equal(t, "bar", c.Bar())
-	require.Equal(t, "Buzz", c.Buz())
-	require.Equal(t, "FizzBuzz-FizzBuzz", c.ExecTemplateFiz("-FizzBuzz"))
-}
-
-func TestUpdateConfig(t *testing.T) {
+func TestUpdateConfigSingle(t *testing.T) {
 	tmp, err := ioutil.TempDir("", "mozey-config")
 	require.NoError(t, err)
 	defer (func() {
@@ -177,23 +106,154 @@ func TestUpdateConfig(t *testing.T) {
 	in.Env = env
 	in.Keys = ArgMap{"APP_FOO", "APP_bar"}
 	in.Values = ArgMap{"update 1", "update 2"}
-	in.Config, err = NewConfig(in.AppDir, in.Env, in.Prefix)
-	require.NoError(t, err)
 
 	out, err := Cmd(in)
 	require.NoError(t, err)
 	require.Equal(t, CmdUpdateConfig, out.Cmd)
 	require.Equal(t, 0, out.ExitCode)
-	log.Debug().Msg(out.Buf.String())
 
 	m := make(map[string]string)
-	err = json.Unmarshal(out.Buf.Bytes(), &m)
+	err = json.Unmarshal(out.Files[0].Buf.Bytes(), &m)
 	require.NoError(t, err)
 	require.Empty(t, m["APP_DIR"], "APP_DIR must not be set in config file")
 	require.Equal(t, "update 1", m["APP_FOO"])
 	// 2021-08-15 Use keys exactly as per config file
 	// require.Empty(t, m["APP_bar"], "keys must be uppercase")
 	require.Equal(t, "update 2", m["APP_bar"])
+}
+
+func TestUpdateConfigMulti(t *testing.T) {
+	tmp, err := ioutil.TempDir("", "mozey-config")
+	require.NoError(t, err)
+	defer (func() {
+		// log.Debug().Str("tmp", tmp).Msg("")
+		_ = os.RemoveAll(tmp)
+	})()
+
+	// Create config files...
+	test0 := "xxx"
+
+	env := "dev"
+	// Non-sample
+	err = ioutil.WriteFile(
+		filepath.Join(tmp, fmt.Sprintf("config.%v.json", env)),
+		[]byte(`{"APP_FOO": "xxx"}`),
+		0644)
+	require.NoError(t, err)
+	// Sample
+	err = ioutil.WriteFile(
+		filepath.Join(tmp, fmt.Sprintf("sample.config.%v.json", env)),
+		[]byte(`{"APP_FOO": "xxx"}`),
+		0644)
+	require.NoError(t, err)
+
+	env = "prod"
+	// Non-sample
+	err = ioutil.WriteFile(
+		filepath.Join(tmp, fmt.Sprintf("config.%v.json", env)),
+		[]byte(`{"APP_FOO": "xxx"}`),
+		0644)
+	require.NoError(t, err)
+	// Sample
+	err = ioutil.WriteFile(
+		filepath.Join(tmp, fmt.Sprintf("sample.config.%v.json", env)),
+		[]byte(`{"APP_FOO": "xxx"}`),
+		0644)
+	require.NoError(t, err)
+
+	var in *CmdIn
+	var out *CmdOut
+
+	// .........................................................................
+	test1 := "Only the file as the env flag"
+	in = &CmdIn{}
+	in.AppDir = tmp
+	in.Prefix = "APP_"
+	in.Env = "dev"
+	in.Keys = ArgMap{"APP_FOO"}
+	in.Values = ArgMap{test1}
+	out, err = Cmd(in)
+	require.NoError(t, err)
+	require.Equal(t, CmdUpdateConfig, out.Cmd)
+	require.Equal(t, 0, out.ExitCode)
+	for _, file := range out.Files {
+		m := make(map[string]string)
+		err = json.Unmarshal(file.Buf.Bytes(), &m)
+		require.NoError(t, err)
+		if strings.Contains(file.Path, "config.dev.json") {
+			require.Equal(t, test1, m["APP_FOO"], file.Path)
+		} else {
+			require.Equal(t, test0, m["APP_FOO"], file.Path)
+		}
+	}
+
+	// .........................................................................
+	test2 := "Only the non-sample files"
+	in = &CmdIn{}
+	in.AppDir = tmp
+	in.Prefix = "APP_"
+	in.Env = "*"
+	in.Keys = ArgMap{"APP_FOO"}
+	in.Values = ArgMap{test2}
+	out, err = Cmd(in)
+	require.NoError(t, err)
+	require.Equal(t, CmdUpdateConfig, out.Cmd)
+	require.Equal(t, 0, out.ExitCode)
+	for _, file := range out.Files {
+		m := make(map[string]string)
+		err = json.Unmarshal(file.Buf.Bytes(), &m)
+		require.NoError(t, err)
+		if strings.Contains(file.Path, "config.dev.json") ||
+			strings.Contains(file.Path, "config.prod.json") {
+			require.Equal(t, test2, m["APP_FOO"], file.Path)
+		} else {
+			require.Equal(t, test0, m["APP_FOO"], file.Path)
+		}
+	}
+
+	// .........................................................................
+	test3 := "Only the sample files"
+	in = &CmdIn{}
+	in.AppDir = tmp
+	in.Prefix = "APP_"
+	in.Env = "sample.*"
+	in.Keys = ArgMap{"APP_FOO"}
+	in.Values = ArgMap{test3}
+	out, err = Cmd(in)
+	require.NoError(t, err)
+	require.Equal(t, CmdUpdateConfig, out.Cmd)
+	require.Equal(t, 0, out.ExitCode)
+	for _, file := range out.Files {
+		m := make(map[string]string)
+		err = json.Unmarshal(file.Buf.Bytes(), &m)
+		require.NoError(t, err)
+		if strings.Contains(file.Path, "sample.config.dev.json") ||
+			strings.Contains(file.Path, "sample.config.prod.json") {
+			require.Equal(t, test3, m["APP_FOO"], file.Path)
+		} else {
+			require.Equal(t, test0, m["APP_FOO"], file.Path)
+		}
+	}
+
+	// .........................................................................
+	test4 := "All the files"
+	in = &CmdIn{}
+	in.AppDir = tmp
+	in.Prefix = "APP_"
+	in.All = true
+	in.Keys = ArgMap{"APP_FOO"}
+	in.Values = ArgMap{test4}
+	out, err = Cmd(in)
+	require.NoError(t, err)
+	require.Equal(t, CmdUpdateConfig, out.Cmd)
+	require.Equal(t, 0, out.ExitCode)
+	for _, file := range out.Files {
+		m := make(map[string]string)
+		err = json.Unmarshal(file.Buf.Bytes(), &m)
+		require.NoError(t, err)
+		require.Equal(t, test4, m["APP_FOO"], file.Path)
+	}
+
 }
 
 func TestSetEnv(t *testing.T) {
@@ -218,10 +278,8 @@ func TestSetEnv(t *testing.T) {
 	in.AppDir = tmp
 	in.Prefix = "APP_"
 	in.Env = env
-	in.Config, err = NewConfig(in.AppDir, in.Env, in.Prefix)
-	require.NoError(t, err)
 
-	buf, err := SetEnv(in)
+	buf, _, err := setEnv(in)
 	require.NoError(t, err)
 	s := buf.String()
 
@@ -256,8 +314,6 @@ func TestCSV(t *testing.T) {
 	in.AppDir = tmp
 	in.Prefix = "APP_"
 	in.Env = env
-	in.Config, err = NewConfig(in.AppDir, in.Env, in.Prefix)
-	require.NoError(t, err)
 	in.CSV = true
 
 	in.Sep = ","
@@ -295,8 +351,6 @@ func TestBase64(t *testing.T) {
 	in.Prefix = "APP_"
 	in.Env = env
 	in.Base64 = true
-	in.Config, err = NewConfig(in.AppDir, in.Env, in.Prefix)
-	require.NoError(t, err)
 
 	out, err := Cmd(in)
 	require.NoError(t, err)
@@ -330,8 +384,6 @@ func TestGet(t *testing.T) {
 	in.AppDir = tmp
 	in.Prefix = "APP_"
 	in.Env = env
-	in.Config, err = NewConfig(in.AppDir, in.Env, in.Prefix)
-	require.NoError(t, err)
 
 	in.PrintValue = "APP_FOO"
 	out, err := Cmd(in)
@@ -445,4 +497,41 @@ func BenchmarkExecuteTemplateSprintf(b *testing.B) {
 func TestGetTemplateParams(t *testing.T) {
 	params := GetTemplateParams("Fizz{{.Buz}}{{.Meh}}")
 	require.Equal(t, []string{"Buz", "Meh"}, params)
+}
+
+func TestGetEnvs(t *testing.T) {
+	tmp, err := ioutil.TempDir("", "mozey-config")
+	require.NoError(t, err)
+	defer (func() {
+		_ = os.RemoveAll(tmp)
+	})()
+
+	err = ioutil.WriteFile(
+		filepath.Join(tmp, "config.dev.json"),
+		[]byte(`{}`),
+		0644)
+	require.NoError(t, err)
+	err = ioutil.WriteFile(
+		filepath.Join(tmp, "sample.config.dev.json"),
+		[]byte(`{}`),
+		0644)
+	require.NoError(t, err)
+	err = ioutil.WriteFile(
+		filepath.Join(tmp, "config.prod.json"),
+		[]byte(`{}`),
+		0644)
+	require.NoError(t, err)
+	err = ioutil.WriteFile(
+		filepath.Join(tmp, "sample.config.prod.json"),
+		[]byte(`{}`),
+		0644)
+	require.NoError(t, err)
+
+	envs, err := GetEnvs(tmp, false)
+	require.NoError(t, err)
+	require.Equal(t, []string{"dev", "prod"}, envs)
+
+	envs, err = GetEnvs(tmp, true)
+	require.NoError(t, err)
+	require.Equal(t, []string{"sample.dev", "sample.prod"}, envs)
 }

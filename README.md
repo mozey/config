@@ -1,15 +1,17 @@
 # config
 
-Manage env vars with a flat `config.ENV.json` file,
-default `ENV=dev`
+Apps must not set or source their own config, instead 
+[read config from the env](https://12factor.net/config).
+
+[Env vars](https://en.wikipedia.org/wiki/Environment_variable) 
+must be set in the parent process.
+
+Manage env vars with a flat `config.ENV.json` file, default `ENV=dev`
 
 `mozey/config` has the following components
 - Command to manage the env: `configu`
 - Bash function to toggle env: `conf`
 - Generate a package (e.g. `pkg/config/config.go`) to include in your module
-
-Apps must not set their own config, instead read it from the env.
-Env vars must be set in the parent process.
 
 
 ## Quick start
@@ -46,6 +48,11 @@ Reset env
 Set a key value in `config.dev.json`
 
     ${GOPATH}/bin/configu -key APP_FOO -value xxx
+
+Set a key value for all `config.*.json` 
+and `sample.config.*.json` files in APP_DIR
+
+    ${GOPATH}/bin/configu -all -key APP_FOO -value xxx
 
 
 ## Toggling env
@@ -107,7 +114,7 @@ The `configu` cmd uses `config.dev.json` by default.
 
 Create `config.prod.json` and set a key
 
-    cp ./config.prod.sample.json ./config.prod.json
+    cp ./sample.config.prod.json ./config.prod.json
 
     configu -env prod -key APP_BEER -value pilsner
 
@@ -168,7 +175,7 @@ Update testdata if required (after adding new features)
 
 Create `config.dev.json`
 
-    cp ./config.dev.sample.json ./config.dev.json
+    cp ./sample.config.dev.json ./config.dev.json
 
 Run the `configu` cmd.
 By default, echo `config.dev.json`,
@@ -252,7 +259,7 @@ How would the config package be generated?
 
 Keep in mind that env must be set in the parent process,
 i.e. **apps should not set their own config, they must read it from the env.**
-See [12factor.net/config](https://12factor.net/config), and 
+
 [Notes re. twelve factor apps](https://github.com/mozey/config/issues/5)
 
 
@@ -263,7 +270,7 @@ All keys must start with the **same prefix**.
 Keys are case sensitive,
 and it's advised to make keys **all uppercase**.
 
-Use **SNAKE_CASE**.
+Use (uppercase) **SNAKE_CASE**.
 
 Assuming the default key prefix `APP_`,
 **avoid keys that start with**
