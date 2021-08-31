@@ -126,6 +126,7 @@ func TestUpdateConfigMulti(t *testing.T) {
 	tmp, err := ioutil.TempDir("", "mozey-config")
 	require.NoError(t, err)
 	defer (func() {
+		// log.Debug().Str("tmp", tmp).Msg("")
 		_ = os.RemoveAll(tmp)
 	})()
 
@@ -160,35 +161,15 @@ func TestUpdateConfigMulti(t *testing.T) {
 		0644)
 	require.NoError(t, err)
 
-	// .........................................................................
-	test1 := "Only the file as the env flag"
-	in := &CmdIn{}
-	in.AppDir = tmp
-	in.Prefix = "APP_"
-	in.Env = "dev"
-	in.Keys = ArgMap{"APP_FOO"}
-	in.Values = ArgMap{test1}
-	out, err := Cmd(in)
-	require.NoError(t, err)
-	require.Equal(t, CmdUpdateConfig, out.Cmd)
-	require.Equal(t, 0, out.ExitCode)
-	for _, file := range out.Files {
-		m := make(map[string]string)
-		err = json.Unmarshal(file.Buf.Bytes(), &m)
-		require.NoError(t, err)
-		if strings.Contains(file.Path, "config.dev.json") {
-			require.Equal(t, test1, m["APP_FOO"])
-		} else {
-			require.Equal(t, test0, m["APP_FOO"])
-		}
-	}
+	var in *CmdIn
+	var out *CmdOut
 
 	// .........................................................................
-	test2 := "Only the non-sample files"
+	test1 := "Only the file as the env flag"
 	in = &CmdIn{}
 	in.AppDir = tmp
 	in.Prefix = "APP_"
-	in.Env = "*"
+	in.Env = "dev"
 	in.Keys = ArgMap{"APP_FOO"}
 	in.Values = ArgMap{test1}
 	out, err = Cmd(in)
@@ -199,13 +180,78 @@ func TestUpdateConfigMulti(t *testing.T) {
 		m := make(map[string]string)
 		err = json.Unmarshal(file.Buf.Bytes(), &m)
 		require.NoError(t, err)
-		if strings.Contains(file.Path, "sample.config") {
-			require.Equal(t, test0, m["APP_FOO"])
-		} else if strings.Contains(file.Path, "config.dev.json") {
-			require.Equal(t, test1, m["APP_FOO"])
+		if strings.Contains(file.Path, "config.dev.json") {
+			require.Equal(t, test1, m["APP_FOO"], file.Path)
 		} else {
-			require.Equal(t, test2, m["APP_FOO"])
+			require.Equal(t, test0, m["APP_FOO"], file.Path)
 		}
+	}
+
+	// .........................................................................
+	test2 := "Only the non-sample files"
+	in = &CmdIn{}
+	in.AppDir = tmp
+	in.Prefix = "APP_"
+	in.Env = "*"
+	in.Keys = ArgMap{"APP_FOO"}
+	in.Values = ArgMap{test2}
+	out, err = Cmd(in)
+	require.NoError(t, err)
+	require.Equal(t, CmdUpdateConfig, out.Cmd)
+	require.Equal(t, 0, out.ExitCode)
+	for _, file := range out.Files {
+		m := make(map[string]string)
+		err = json.Unmarshal(file.Buf.Bytes(), &m)
+		require.NoError(t, err)
+		if strings.Contains(file.Path, "config.dev.json") ||
+			strings.Contains(file.Path, "config.prod.json") {
+			require.Equal(t, test2, m["APP_FOO"], file.Path)
+		} else {
+			require.Equal(t, test0, m["APP_FOO"], file.Path)
+		}
+	}
+
+	// .........................................................................
+	test3 := "Only the sample files"
+	in = &CmdIn{}
+	in.AppDir = tmp
+	in.Prefix = "APP_"
+	in.Env = "sample.*"
+	in.Keys = ArgMap{"APP_FOO"}
+	in.Values = ArgMap{test3}
+	out, err = Cmd(in)
+	require.NoError(t, err)
+	require.Equal(t, CmdUpdateConfig, out.Cmd)
+	require.Equal(t, 0, out.ExitCode)
+	for _, file := range out.Files {
+		m := make(map[string]string)
+		err = json.Unmarshal(file.Buf.Bytes(), &m)
+		require.NoError(t, err)
+		if strings.Contains(file.Path, "sample.config.dev.json") ||
+			strings.Contains(file.Path, "sample.config.prod.json") {
+			require.Equal(t, test3, m["APP_FOO"], file.Path)
+		} else {
+			require.Equal(t, test0, m["APP_FOO"], file.Path)
+		}
+	}
+
+	// .........................................................................
+	test4 := "All the files"
+	in = &CmdIn{}
+	in.AppDir = tmp
+	in.Prefix = "APP_"
+	in.All = true
+	in.Keys = ArgMap{"APP_FOO"}
+	in.Values = ArgMap{test4}
+	out, err = Cmd(in)
+	require.NoError(t, err)
+	require.Equal(t, CmdUpdateConfig, out.Cmd)
+	require.Equal(t, 0, out.ExitCode)
+	for _, file := range out.Files {
+		m := make(map[string]string)
+		err = json.Unmarshal(file.Buf.Bytes(), &m)
+		require.NoError(t, err)
+		require.Equal(t, test4, m["APP_FOO"], file.Path)
 	}
 
 }

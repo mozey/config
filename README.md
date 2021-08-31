@@ -1,15 +1,17 @@
 # config
 
-Manage env vars with a flat `config.ENV.json` file,
-default `ENV=dev`
+Apps must not set or source their own config, instead 
+[read config from the env](https://12factor.net/config).
+
+[Env vars](https://en.wikipedia.org/wiki/Environment_variable) 
+must be set in the parent process.
+
+Manage env vars with a flat `config.ENV.json` file, default `ENV=dev`
 
 `mozey/config` has the following components
 - Command to manage the env: `configu`
 - Bash function to toggle env: `conf`
 - Generate a package (e.g. `pkg/config/config.go`) to include in your module
-
-Apps must not set their own config, instead read it from the env.
-Env vars must be set in the parent process.
 
 
 ## Quick start
@@ -257,7 +259,7 @@ How would the config package be generated?
 
 Keep in mind that env must be set in the parent process,
 i.e. **apps should not set their own config, they must read it from the env.**
-See [12factor.net/config](https://12factor.net/config), and 
+
 [Notes re. twelve factor apps](https://github.com/mozey/config/issues/5)
 
 
