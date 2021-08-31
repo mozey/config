@@ -18,9 +18,9 @@ Manage env vars with a flat `config.ENV.json` file, default `ENV=dev`
 
 Install from source
 
-**WARNING** Do not run the command below inside a working copy of this repo,
+**WARNING** Do not run the command below inside a clone of this repo,
 or inside any folder this is a "go module", i.e. has a `go.mod` file,
-otherwise the install (or update the latest tag) won't work
+otherwise the install (or update to the latest tag) won't work
 
     go get -u github.com/mozey/config/...
 
@@ -207,9 +207,9 @@ Then use the local command
 
 Install
 
-**WARNING** Do not run the command below inside a working copy of this repo,
+**WARNING** Do not run the command below inside a clone of this repo,
 or inside any folder this is a "go module", i.e. has a `go.mod` file,
-otherwise the install (or update the latest tag) won't work
+otherwise the install (or update to the latest tag) won't work
 
     go get -u github.com/mozey/config/...
 
