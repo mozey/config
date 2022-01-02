@@ -199,13 +199,20 @@ func generateHelpers(in *CmdIn) (files []File, err error) {
 		Buf:  bytes.NewBuffer(buf.Bytes()),
 	}
 
-	filePath, buf, err = executeTemplate(in, FileNameTemplateGo, data)
-	if err != nil {
-		return files, err
-	}
-	files[1] = File{
-		Path: filePath,
-		Buf:  bytes.NewBuffer(buf.Bytes()),
+	if len(data.TemplateKeys) > 0 {
+		filePath, buf, err = executeTemplate(in, FileNameTemplateGo, data)
+		if err != nil {
+			return files, err
+		}
+		files[1] = File{
+			Path: filePath,
+			Buf:  bytes.NewBuffer(buf.Bytes()),
+		}
+	} else {
+		files[1] = File{
+			Path: "",
+			Buf:  bytes.NewBuffer([]byte("")),
+		}
 	}
 
 	filePath, buf, err = executeTemplate(in, FileNameFnGo, data)

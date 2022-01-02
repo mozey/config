@@ -80,9 +80,12 @@ type Files []File
 // Print file paths and contents to buf
 func (files Files) Print(buf *bytes.Buffer) {
 	for _, file := range files {
-		buf.WriteString("\n")
-		buf.WriteString(fmt.Sprintf("// FilePath: %s", file.Path))
-		buf.Write(file.Buf.Bytes())
+		// empty file.Path implies nothing was generated
+		if file.Path != "" {
+			buf.WriteString("\n")
+			buf.WriteString(fmt.Sprintf("// FilePath: %s", file.Path))
+			buf.Write(file.Buf.Bytes())
+		}
 	}
 }
 
@@ -90,21 +93,24 @@ func (files Files) Print(buf *bytes.Buffer) {
 func (files Files) Save(buf *bytes.Buffer) (err error) {
 	// TODO Use goroutines to save files concurrently
 	for _, file := range files {
-		// Make sure parent dirs exist
-		err := os.MkdirAll(filepath.Dir(file.Path), 0755)
-		if err != nil {
-			log.Debug().Str("file_path", file.Path).Msg("")
-			return errors.WithStack(err)
+		// empty file.Path implies nothing was generated
+		if file.Path != "" {
+			// Make sure parent dirs exist
+			err := os.MkdirAll(filepath.Dir(file.Path), 0755)
+			if err != nil {
+				log.Debug().Str("file_path", file.Path).Msg("")
+				return errors.WithStack(err)
+			}
+			// Write the file
+			err = os.WriteFile(file.Path, file.Buf.Bytes(), 0644)
+			if err != nil {
+				log.Debug().Str("file_path", file.Path).Msg("")
+				return errors.WithStack(err)
+			}
+			// Print file path only
+			buf.WriteString(file.Path)
+			buf.WriteString("\n")
 		}
-		// Write the file
-		err = os.WriteFile(file.Path, file.Buf.Bytes(), 0644)
-		if err != nil {
-			log.Debug().Str("file_path", file.Path).Msg("")
-			return errors.WithStack(err)
-		}
-		// Print file path only
-		buf.WriteString(file.Path)
-		buf.WriteString("\n")
 	}
 
 	return nil
