@@ -238,6 +238,11 @@ func NewConfig(appDir string, env string) (configPath string, c *Config, err err
 		return configPath, c, errors.WithStack(err)
 	}
 
+	if strings.TrimSpace(string(b)) == "" {
+		return configPath, c, errors.WithStack(
+			fmt.Errorf("empty file %s", filepath.Base(configPath)))
+	}
+
 	// Unmarshal config.
 	// The config file must have a flat key value structure
 	err = json.Unmarshal(b, &c.Map)

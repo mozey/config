@@ -12,7 +12,8 @@ conf() {
 
     # APP_DIR is the full path to the config cmd basedir.
     # Project files can be referenced relative to APP_DIR
-    export APP_DIR=$(pwd)
+    APP_DIR=$(pwd)
+    export APP_DIR
 
     # Default env is dev, first arg overrides
     ENV=""
@@ -25,10 +26,14 @@ conf() {
 
     # Set env as per config file
     if test -f "${APP_DIR}/config.${ENV}.json"; then
-        eval "$(${GOPATH}/bin/configu -env ${ENV})"
-        eval "export APP_DIR=$(pwd)"
-        # Checking retVal with $? won't work here
-        printenv | sort | grep --color -E "APP_|AWS_"
+        if OUTPUT="$("${GOPATH}"/bin/configu -env ${ENV})"; then
+            eval "$OUTPUT"
+            eval "export APP_DIR=$(pwd)"
+            # Checking retVal with $? won't work here
+            printenv | sort | grep --color -E "APP_|AWS_"
+        else
+            echo "$OUTPUT"
+        fi
     else
         echo "${APP_DIR}/config.${ENV}.json not found"
         return 1

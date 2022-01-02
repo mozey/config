@@ -21,59 +21,68 @@ Install from source
 **WARNING** Do not run the command below inside a clone of this repo,
 or inside any folder this is a "go module", i.e. has a `go.mod` file,
 otherwise the install (or update to the latest tag) won't work
-
-    go get -u github.com/mozey/config/...
+```sh
+go get -u github.com/mozey/config/...
+```
 
 Create a config file
+```sh
+echo '{"APP_FOO": "foo", "APP_BAR": "foo"}' > config.dev.json
 
-    echo '{"APP_FOO": "foo", "APP_BAR": "foo"}' > config.dev.json
+# This env var will be removed,
+# it is not listed in the config file
+export APP_VAR_NOT_IN_CONFIG_FILE="not_for_this_app"
 
-    # This env var will be removed,
-    # it is not listed in the config file
-    export APP_VAR_NOT_IN_CONFIG_FILE="not_for_this_app"
-
-    printenv | grep APP_
+printenv | grep APP_
+```
 
 Print commands
-
-    export APP_DIR=$(pwd)
-    ${GOPATH}/bin/configu
+```sh
+export APP_DIR=$(pwd)
+${GOPATH}/bin/configu
+```
 
 Reset env
+```sh
+eval "$(${GOPATH}/bin/configu)"
+```
 
-    eval "$(${GOPATH}/bin/configu)"
-
-    printenv | grep APP_
+printenv | grep APP_
 
 Set a key value in `config.dev.json`
-
-    ${GOPATH}/bin/configu -key APP_FOO -value xxx
+```sh
+${GOPATH}/bin/configu -key APP_FOO -value xxx
+```
 
 Set a key value for all `config.*.json` 
 and `sample.config.*.json` files in APP_DIR
-
-    ${GOPATH}/bin/configu -all -key APP_FOO -value xxx
+```sh
+${GOPATH}/bin/configu -all -key APP_FOO -value xxx
+```
 
 
 ## Toggling env
 
 Copy the conf script to your home dir
-
-    cp ./conf.sh ~/.conf.sh
+```sh
+cp ./conf.sh ~/.conf.sh
+```
 
 Source the script on [bash startup](https://www.gnu.org/software/bash/manual/html_node/Bash-Startup-Files.html),
 e.g. `~/.bashrc`, to create the conf func
-
-    source ${HOME}/.conf.sh
+```sh
+source ${HOME}/.conf.sh
+```
 
 Use the func to toggle env
+```sh
+conf
 
-    conf
+conf prod
 
-    conf prod
-
-    # Tip: don't create a prod config file on your dev machine!
-    conf stage
+# Tip: don't create a prod config file on your dev machine!
+conf stage
+```
 
 
 ## Generate config package
@@ -84,16 +93,18 @@ The config package can be included in your app. It is useful for
 - load config from file for testing
 
 Use the `-dry-run` flag to print the result and skip the update
-
-    configu -generate pkg/config -dry-run
+```sh
+configu -generate pkg/config -dry-run
+```
 
 Refresh the package after adding or removing config keys
+```sh
+mkdir -p pkg/config
 
-    mkdir -p pkg/config
+configu -generate pkg/config
 
-    configu -generate pkg/config
-
-    go fmt ./pkg/config/config.go
+go fmt ./pkg/config/config.go
+```
 
 
 ## Build script
@@ -104,8 +115,9 @@ Use the config script to
 - create the dev config file
 - generate the config package
 
-
-    APP_DIR=$(pwd) ./scripts/config.sh
+```sh
+APP_DIR=$(pwd) ./scripts/config.sh
+```
 
 
 ## Prod env
@@ -113,75 +125,91 @@ Use the config script to
 The `configu` cmd uses `config.dev.json` by default.
 
 Create `config.prod.json` and set a key
+```sh
+cp ./sample.config.prod.json ./config.prod.json
 
-    cp ./sample.config.prod.json ./config.prod.json
-
-    configu -env prod -key APP_BEER -value pilsner
+configu -env prod -key APP_BEER -value pilsner
+```
 
 Export `prod` env
+```sh
+configu -env prod
 
-    configu -env prod
+eval "$(configu -env prod)"
 
-    eval "$(configu -env prod)"
-
-    printenv | sort | grep -E "APP_"
+printenv | sort | grep -E "APP_"
+```
 
 ### Compare config files and print un-matched keys
 
 It's advisable for all config files to have the same keys,
 if a key does not apply to an env then set the value to an empty string.
+```sh
+configu -env dev -compare prod
 
-    configu -env dev -compare prod
-
-    # cmd exits with error code if the keys don't match
-    echo $?
+# cmd exits with error code if the keys don't match
+echo $?
+```
 
 Compare keys in `config.dev.json` with `sample.config.dev.json`
-
-    configu -env dev -compare sample.dev
+```sh
+configu -env dev -compare sample.dev
+```
 
 Set a key value in `config.prod.json`.
-
-    ./configu -env prod -key APP_FOO -value xxx
+```sh
+./configu -env prod -key APP_FOO -value xxx
+```
 
 
 ## Dev setup
 
 Get the code
+```sh
+git clone https://github.com/mozey/config.git
 
-    git clone https://github.com/mozey/config.git
-
-    cd config
+cd config
+```
 
 Reset to remove ignored files
-
-    APP_DIR=$(pwd) ./scripts/reset.sh
+```sh
+APP_DIR=$(pwd) ./scripts/reset.sh
+```
 
 `APP_DIR` must be always be set to the module root.
 All config env vars must have a prefix, the default is `APP_`
 
 Run the tests
-
-    APP_DIR=$(pwd) gotest -v ./...
+```sh
+APP_DIR=$(pwd) gotest -v ./...
+```
 
 Update testdata if required (after adding new features)
-
-    configu -generate pkg/config
-    cp pkg/config/config.go pkg/cmdconfig/testdata/config.go
-    cp sample.config.dev.json pkg/cmdconfig/testdata/config.dev.json
+```sh
+configu -generate pkg/config
+cp pkg/config/config.go pkg/cmdconfig/testdata/config.go
+cp sample.config.dev.json pkg/cmdconfig/testdata/config.dev.json
+```
 
 
 ## Debug
 
 Create `config.dev.json`
-
-    cp ./sample.config.dev.json ./config.dev.json
+```sh
+cp ./sample.config.dev.json ./config.dev.json
+```
 
 Run the `configu` cmd.
 By default, echo `config.dev.json`,
 formatted as commands to export env vars
+```sh
+APP_DIR=$(pwd) go run cmd/configu/main.go
+```
 
-    APP_DIR=$(pwd) go run cmd/configu/main.go
+Build from source
+```sh
+go build -o ${GOPATH}/bin/configu ./cmd/configu
+```
 
 
 ## Advanced Usage
@@ -193,15 +221,16 @@ see comments in the `config.Main` func
 
 Build the `configu` command.
 The APP_DIR env var is required
+```sh
+export APP_DIR=$(pwd)
 
-    export APP_DIR=$(pwd)
-
-    go build -o ${APP_DIR}/configu ./cmd/configu
+go build -o ${APP_DIR}/configu ./cmd/configu
+```
 
 Then use the local command
-
-    ./configu
-
+```sh
+./configu
+```
 
 ## Windows
 
@@ -210,49 +239,56 @@ Install
 **WARNING** Do not run the command below inside a clone of this repo,
 or inside any folder this is a "go module", i.e. has a `go.mod` file,
 otherwise the install (or update to the latest tag) won't work
-
-    go get -u github.com/mozey/config/...
+```
+go get -u github.com/mozey/config/...
+```
 
 Depends on [clink](https://mridgers.github.io/clink) and
 [gow](https://github.com/bmatzelle/gow/wiki), install them first.
 Then the following commands can be executed in `cmd.exe`
 
 Create a config file
+```
+echo {"APP_FOO": "foo", "APP_BAR": "foo"} > config.dev.json
 
-    echo {"APP_FOO": "foo", "APP_BAR": "foo"} > config.dev.json
+# This env var will be removed,
+# it is not listed in the config file
+set APP_VAR_NOT_IN_CONFIG_FILE="not_for_this_app"
 
-    # This env var will be removed,
-    # it is not listed in the config file
-    set APP_VAR_NOT_IN_CONFIG_FILE="not_for_this_app"
-
-    printenv | grep APP_
+printenv | grep APP_
+```
 
 Print commands
-
-    set APP_DIR=%cd%
-    %GOPATH%/bin/configu
+```
+set APP_DIR=%cd%
+%GOPATH%/bin/configu
+```
 
 Reset env
+```
+eval "$(${GOPATH}/bin/configu)"
 
-    eval "$(${GOPATH}/bin/configu)"
-
-    printenv | grep APP_
+printenv | grep APP_
+```
 
 Set a key value in `config.dev.json`
-
-    %GOPATH%/bin/configu -key APP_FOO -value xxx
+```
+%GOPATH%/bin/configu -key APP_FOO -value xxx
+```
 
 Toggle config, first update PATH to make `conf.bat` available
+```
+Right click start > System > Advanced system settings > Advanced > Environment Variables...
+%GOPATH%/src/github.com/mozey/config
 
-    Right click start > System > Advanced system settings > Advanced > Environment Variables...
-    %GOPATH%/src/github.com/mozey/config
-
-    conf.bat
+conf.bat
+```
 
 Run the tests
-
-    set APP_DIR=%cd%
-    gotest -v ./...
+```
+set APP_DIR=%cd%
+gotest -v ./...
+```
 
 
 ## Architecture notes
