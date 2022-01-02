@@ -194,6 +194,8 @@ func (c *Config) Exec{{.Key}}({{.ExplicitParams}}) string {
 
 // templateFnGo text template to generate FileNameFnGo
 var templateFnGo = `
+// Code generated with https://github.com/mozey/config DO NOT EDIT
+
 package config
 
 import (
