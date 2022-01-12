@@ -1,7 +1,7 @@
 {
-    "APP_DEBUG": "true",
     "APP_BAR": "bar",
-    "APP_FOO": "foo",
     "APP_BEER": "lager",
+    "APP_DEBUG": "true",
+    "APP_FOO": "foo",
     "APP_TEMPLATE_FIZ_BUZ": "fiz_buz"
 }

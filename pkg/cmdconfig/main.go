@@ -25,6 +25,7 @@ const (
 	FlagBase64   = "base64"
 	FlagCompare  = "compare"
 	FlagCSV      = "csv"
+	FlagDel      = "del"
 	FlagDryRun   = "dry-run"
 	FlagEnv      = "env"
 	FlagGenerate = "generate"
@@ -47,6 +48,8 @@ func ParseFlags() *CmdIn {
 		"Config file to use, also supports wildcards \"*\" and \"sample.*\"")
 	flag.BoolVar(&in.All,
 		FlagAll, false, "Apply to all config files and samples")
+	flag.BoolVar(&in.Del,
+		FlagDel, false, "Delete the specified keys")
 	// Default must be empty
 	flag.StringVar(&in.Compare,
 		FlagCompare, "", "Compare config file keys")

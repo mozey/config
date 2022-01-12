@@ -49,6 +49,8 @@ type CmdIn struct {
 	// All makes the cmd apply to all config files in APP_DIR, including samples
 	// https://github.com/mozey/config/issues/2
 	All bool
+	// Del deletes the specified keys
+	Del bool
 	// Compare config file keys
 	Compare string
 	// Keys to update
@@ -301,7 +303,8 @@ func compareKeys(in *CmdIn) (buf *bytes.Buffer, files []File, err error) {
 
 // refreshConfigByEnv replaces the given key value pairs in the specified env,
 // and returns sorted JSON that can be used to replace the config file contents
-func refreshConfigByEnv(appDir string, prefix string, env string, keys ArgMap, values ArgMap) (
+func refreshConfigByEnv(
+	appDir string, prefix string, env string, keys ArgMap, values ArgMap, del bool) (
 	configPath string, b []byte, err error) {
 
 	// Read config for the given env from file, or load from cache
@@ -324,14 +327,24 @@ func refreshConfigByEnv(appDir string, prefix string, env string, keys ArgMap, v
 					"key for env %s must strart with prefix %s", env, prefix))
 		}
 
-		if i > len(values)-1 {
-			return configPath, b, errors.WithStack(
-				fmt.Errorf("env %s missing value for key %s", env, key))
-		}
-		value := values[i]
+		if del {
+			// Delete the key
+			_, ok := m[key]
+			if ok {
+				delete(m, key)
+			}
 
-		// Update key value pairs
-		m[key] = value
+		} else {
+			if i > len(values)-1 {
+				return configPath, b, errors.WithStack(
+					fmt.Errorf("env %s missing value for key %s", env, key))
+			}
+			value := values[i]
+
+			// Set value
+			m[key] = value
+		}
+
 		RefreshKeys(conf)
 	}
 
@@ -386,7 +399,7 @@ func updateConfig(in *CmdIn) (buf *bytes.Buffer, files []File, err error) {
 	for i, env := range envs {
 		var configPath string
 		configPath, b, err = refreshConfigByEnv(
-			in.AppDir, in.Prefix, env, in.Keys, in.Values)
+			in.AppDir, in.Prefix, env, in.Keys, in.Values, in.Del)
 		if err != nil {
 			return buf, files, err
 		}
