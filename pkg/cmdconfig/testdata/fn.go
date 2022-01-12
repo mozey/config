@@ -1,3 +1,6 @@
+
+// Code generated with https://github.com/mozey/config DO NOT EDIT
+
 package config
 
 import (

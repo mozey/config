@@ -45,6 +45,9 @@ func TestGenerateHelpersPrint(t *testing.T) {
 
 	for _, file := range out.Files {
 		fileName := filepath.Base(file.Path)
+		ioutil.WriteFile(
+			filepath.Join("testdata", "compare", fileName),
+			file.Buf.Bytes(), 0644)
 		generated := stripGenerated(file.Buf.String())
 		// See "Test fixtures in Go"
 		// https://dave.cheney.net/2016/05/10/test-fixtures-in-go

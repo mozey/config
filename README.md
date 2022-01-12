@@ -184,6 +184,8 @@ Run the tests
 APP_DIR=$(pwd) gotest -v ./...
 ```
 
+Compare generated files in `pkg/cmdconfig/testdata` to `pkg/cmdconfig/testdata/compare`
+
 Update testdata if required (after adding new features)
 ```sh
 configu -generate pkg/config
