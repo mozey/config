@@ -100,13 +100,13 @@ func (files Files) Save(buf *bytes.Buffer) (err error) {
 			// Make sure parent dirs exist
 			err := os.MkdirAll(filepath.Dir(file.Path), 0755)
 			if err != nil {
-				log.Debug().Str("file_path", file.Path).Msg("")
+				log.Info().Str("file_path", file.Path).Msg("")
 				return errors.WithStack(err)
 			}
 			// Write the file
 			err = os.WriteFile(file.Path, file.Buf.Bytes(), 0644)
 			if err != nil {
-				log.Debug().Str("file_path", file.Path).Msg("")
+				log.Info().Str("file_path", file.Path).Msg("")
 				return errors.WithStack(err)
 			}
 			// Print file path only
@@ -234,9 +234,8 @@ func NewConfig(appDir string, env string) (configPath string, c *Config, err err
 	// Read config file
 	b, err := ioutil.ReadFile(configPath)
 	if err != nil {
-		log.Error().
-			Str("config_path", configPath).
-			Stack().Err(err).Msg("")
+		log.Error().Stack().Err(err).
+			Str("config_path", configPath).Msg("")
 		return configPath, c, errors.WithStack(err)
 	}
 
@@ -249,6 +248,7 @@ func NewConfig(appDir string, env string) (configPath string, c *Config, err err
 	// The config file must have a flat key value structure
 	err = json.Unmarshal(b, &c.Map)
 	if err != nil {
+		log.Info().Str("config_path", configPath).Msg("")
 		return configPath, c, errors.WithStack(err)
 	}
 

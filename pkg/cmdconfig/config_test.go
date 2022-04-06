@@ -126,7 +126,7 @@ func TestUpdateConfigMulti(t *testing.T) {
 	tmp, err := ioutil.TempDir("", "mozey-config")
 	require.NoError(t, err)
 	defer (func() {
-		// log.Debug().Str("tmp", tmp).Msg("")
+		// log.Info().Str("tmp", tmp).Msg("")
 		_ = os.RemoveAll(tmp)
 	})()
 
