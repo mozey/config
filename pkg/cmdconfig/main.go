@@ -34,6 +34,7 @@ const (
 	FlagPrefix   = "prefix"
 	FlagSep      = "sep"
 	FlagValue    = "value"
+	FlagOS       = "os"
 )
 
 // ParseFlags before calling Cmd
@@ -73,6 +74,9 @@ func ParseFlags() *CmdIn {
 		FlagDryRun, false, "Don't write files, just print result")
 	flag.BoolVar(&in.Base64,
 		FlagBase64, false, "Encode config file as base64 string")
+	flag.StringVar(&in.OS,
+		FlagOS, "other",
+		"Override compiled x-platform config")
 
 	flag.Parse()
 

@@ -66,6 +66,8 @@ type CmdIn struct {
 	DryRun   bool
 	// Base64 encode config file
 	Base64 bool
+	// OS overrides the compiled x-platform config
+	OS string
 }
 
 // .............................................................................
@@ -436,9 +438,22 @@ func setEnv(in *CmdIn) (buf *bytes.Buffer, files []File, err error) {
 
 	buf = new(bytes.Buffer)
 
+	// Default format is determined at compile time
+	exportFormat := ExportFormat
+	unsetFormat := UnsetFormat
+
+	// Override default format by specifying os flag
+	if in.OS == "windows" {
+		exportFormat = WindowsExportFormat
+		unsetFormat = WindowsUnsetFormat
+	} else if in.OS == "linux" || in.OS == "darwin" {
+		exportFormat = OtherExportFormat
+		unsetFormat = OtherUnsetFormat
+	}
+
 	// Commands to set env
 	for _, key := range config.Keys {
-		buf.WriteString(fmt.Sprintf(ExportFormat, key, config.Map[key]))
+		buf.WriteString(fmt.Sprintf(exportFormat, key, config.Map[key]))
 		buf.WriteString("\n")
 		envKeys[key] = false
 	}
@@ -453,7 +468,7 @@ func setEnv(in *CmdIn) (buf *bytes.Buffer, files []File, err error) {
 	// Unset env vars not listed in the config file
 	for key, unset := range envKeys {
 		if unset {
-			buf.WriteString(fmt.Sprintf(UnsetFormat, key))
+			buf.WriteString(fmt.Sprintf(unsetFormat, key))
 			buf.WriteString("\n")
 		}
 	}
