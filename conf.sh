@@ -26,7 +26,7 @@ conf() {
 
     # Set env as per config file
     if test -f "${APP_DIR}/config.${ENV}.json"; then
-        if OUTPUT="$("${GOPATH}"/bin/configu -env ${ENV})"; then
+        if OUTPUT="$("${GOPATH}"/bin/configu -os linux -env ${ENV})"; then
             eval "$OUTPUT"
             eval "export APP_DIR=$(pwd)"
             # Checking retVal with $? won't work here
