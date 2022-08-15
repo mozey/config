@@ -94,9 +94,9 @@ func TestGenerateHelpersSave(t *testing.T) {
 	// Copy config file from testdata to tmp dir.
 	// See "Test fixtures in Go"
 	// https://dave.cheney.net/2016/05/10/test-fixtures-in-go
-	configFilePath, err := GetConfigFilePath("testdata", in.Env)
+	configFilePath, err := GetConfigFilePath("testdata", in.Env, FileTypeJSON)
 	require.NoError(t, err)
-	dstConfigFilePath, err := GetConfigFilePath(tmp, in.Env)
+	dstConfigFilePath, err := GetConfigFilePath(tmp, in.Env, FileTypeJSON)
 	require.NoError(t, err)
 	err = Copy(configFilePath, dstConfigFilePath)
 	require.NoError(t, err)

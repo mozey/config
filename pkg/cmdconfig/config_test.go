@@ -40,12 +40,12 @@ func randString(n int) string {
 
 func TestGetPath(t *testing.T) {
 	appDir := randString(8)
-	_, err := GetConfigFilePath(appDir, "")
+	_, err := GetConfigFilePath(appDir, "", FileTypeJSON)
 	require.Error(t, err, "assumed path does not exist ", appDir)
 
 	appDir = "/"
 	env := "foo"
-	p, err := GetConfigFilePath(appDir, env)
+	p, err := GetConfigFilePath(appDir, env, FileTypeJSON)
 	require.NoError(t, err)
 	require.Equal(t, filepath.Join(appDir, fmt.Sprintf("config.%v.json", env)), p)
 }
@@ -86,7 +86,7 @@ func TestCompareKeys(t *testing.T) {
 		out.Buf.String())
 }
 
-func TestUpdateConfigSingle(t *testing.T) {
+func TestUpdateConfigSingleJSON(t *testing.T) {
 	tmp, err := ioutil.TempDir("", "mozey-config")
 	require.NoError(t, err)
 	defer (func() {

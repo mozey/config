@@ -118,7 +118,9 @@ func (files Files) Save(buf *bytes.Buffer) (err error) {
 type CmdOut struct {
 	// Cmd is the unique command that was executed
 	Cmd string
-	// ExitCode can be non-zero if the err returned is nil
+	// ExitCode can be non-zero if the err returned is nil,
+	// that means the program did not have any internal error,
+	// but the command "failed", i.e. non-zero exit code
 	ExitCode int
 	// Buf of cmd output
 	Buf *bytes.Buffer
@@ -169,10 +171,14 @@ func GetEnvs(appDir string, samples ListSamples) (envs []string, err error) {
 
 const SamplePrefix = "sample."
 
+const FileTypeEnv = "env"   // e.g. .env
+const FileTypeJSON = "json" // e.g. config.json
+const FileTypeYAML = "yaml" // e.g. config.yaml
+
 // GetConfigFilePath returns the path to a config file.
-// It can also be used to return the path to a sample config file by prefixing env.
-// For example, to get the path to "sample.config.dev.json" pass env="sample.dev"
-func GetConfigFilePath(appDir string, env string) (string, error) {
+// It can also be used to return paths to sample config file by prefixing env,
+// for example, to get the path to "sample.config.dev.json" pass env="sample.dev"
+func GetConfigFilePath(appDir, env, fileType string) (string, error) {
 	if _, err := os.Stat(appDir); err != nil {
 		if os.IsNotExist(err) {
 			return "", errors.WithStack(fmt.Errorf(
@@ -183,27 +189,58 @@ func GetConfigFilePath(appDir string, env string) (string, error) {
 	}
 
 	// Strip SamplePrefix from env
-	sample := ""
+	sample := "" // e.g. config.dev.json
 	if strings.Contains(env, SamplePrefix) {
 		sample = SamplePrefix
 		env = strings.Replace(env, SamplePrefix, "", 1)
 	}
 
+	fileNameFormat := "%vconfig.%v.%v" // e.g. sample.config.dev.json
+	if fileType == FileTypeEnv {
+		fileNameFormat = "%v.%v.%v" // e.g. sample.dev.env
+	}
+
 	return filepath.Join(
-		appDir, fmt.Sprintf("%vconfig.%v.json", sample, env)), nil
+		appDir, fmt.Sprintf(fileNameFormat, sample, env, fileType)), nil
 }
 
 func ReadConfigFile(appDir, env string) (configPath string, b []byte, err error) {
-	configPath, err = GetConfigFilePath(appDir, env)
-	if err != nil {
-		return configPath, b, err
+	found := false
+	for _, fileType := range []string{
+		// Load precedence
+		FileTypeJSON,
+		FileTypeEnv,
+		FileTypeYAML,
+	} {
+		configPath, err = GetConfigFilePath(appDir, env, fileType)
+		if err != nil {
+			return configPath, b, err
+		}
+
+		_, err := os.Stat(appDir)
+		if err != nil {
+			if os.IsNotExist(err) {
+				log.Debug().Str("config_path", configPath).Msg("Not found")
+				continue
+			} else {
+				return configPath, b, errors.WithStack(err)
+			}
+		}
+
+		// Config file exists, try to read it
+		b, err = ioutil.ReadFile(configPath)
+		if err != nil {
+			log.Error().Stack().Err(err).
+				Str("config_path", configPath).Msg("")
+			return configPath, b, errors.WithStack(err)
+		}
+		found = true
+		break
 	}
 
-	b, err = ioutil.ReadFile(configPath)
-	if err != nil {
-		log.Error().Stack().Err(err).
-			Str("config_path", configPath).Msg("")
-		return configPath, b, errors.WithStack(err)
+	if !found {
+		return configPath, b, errors.Errorf(
+			"config file not found for env %s", env)
 	}
 
 	if strings.TrimSpace(string(b)) == "" {
@@ -237,10 +274,23 @@ func NewConfig(appDir string, env string) (configPath string, c *Config, err err
 
 	// Unmarshal config.
 	// The config file must have a flat key value structure
-	err = json.Unmarshal(b, &c.Map)
-	if err != nil {
-		log.Info().Str("config_path", configPath).Msg("")
-		return configPath, c, errors.WithStack(err)
+	fileType := filepath.Ext(configPath)
+	if fileType == FileTypeEnv {
+		// TODO
+		return configPath, c, errors.Errorf(
+			"file type not implemented %s", fileType)
+
+	} else if fileType == FileTypeJSON {
+		err = json.Unmarshal(b, &c.Map)
+		if err != nil {
+			log.Info().Str("config_path", configPath).Msg("")
+			return configPath, c, errors.WithStack(err)
+		}
+
+	} else if fileType == FileTypeYAML {
+		// TODO
+		return configPath, c, errors.Errorf(
+			"file type not implemented %s", fileType)
 	}
 
 	RefreshKeys(c)
@@ -290,12 +340,12 @@ func compareKeys(in *CmdIn) (buf *bytes.Buffer, files []File, err error) {
 // .............................................................................
 
 // refreshConfigByEnv replaces the given key value pairs in the specified env,
-// and returns sorted JSON that can be used to update the config file
+// and returns sorted bytes that can be used to update the config file
 func refreshConfigByEnv(
 	appDir string, prefix string, env string, keys ArgMap, values ArgMap, del bool) (
 	configPath string, b []byte, err error) {
 
-	// Read config for the given env from file, or load from cache
+	// Read config for the given env from file
 	configPath, conf, err := NewConfig(appDir, env)
 	if err != nil {
 		return configPath, b, err
@@ -336,6 +386,7 @@ func refreshConfigByEnv(
 		RefreshKeys(conf)
 	}
 
+	// TODO Switch on file type
 	// Marshal config JSON
 	b, err = json.MarshalIndent(m, "", "    ")
 	if err != nil {

@@ -15,6 +15,8 @@ Load precedence for default `${ENV}=dev`
 - config.json
 - .env.dev
 - .env
+- config.dev.yaml
+- config.yaml
 
 `mozey/config` has the following components
 - Command to manage the env: `configu`
