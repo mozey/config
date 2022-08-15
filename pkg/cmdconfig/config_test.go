@@ -19,6 +19,7 @@ import (
 	// matches wat is actually generated. Therefore, this package can be
 	// imported to test the generated code works as expected
 	config "github.com/mozey/config/pkg/cmdconfig/testdata"
+	"github.com/rs/zerolog/log"
 	"github.com/stretchr/testify/require"
 )
 
@@ -137,13 +138,13 @@ func TestUpdateConfigMulti(t *testing.T) {
 	// Non-sample
 	err = ioutil.WriteFile(
 		filepath.Join(tmp, fmt.Sprintf("config.%v.json", env)),
-		[]byte(`{"APP_FOO": "xxx"}`),
+		[]byte(fmt.Sprintf(`{"APP_FOO": "%s"}`, test0)),
 		0644)
 	require.NoError(t, err)
 	// Sample
 	err = ioutil.WriteFile(
 		filepath.Join(tmp, fmt.Sprintf("sample.config.%v.json", env)),
-		[]byte(`{"APP_FOO": "xxx"}`),
+		[]byte(fmt.Sprintf(`{"APP_FOO": "%s"}`, test0)),
 		0644)
 	require.NoError(t, err)
 
@@ -151,13 +152,13 @@ func TestUpdateConfigMulti(t *testing.T) {
 	// Non-sample
 	err = ioutil.WriteFile(
 		filepath.Join(tmp, fmt.Sprintf("config.%v.json", env)),
-		[]byte(`{"APP_FOO": "xxx"}`),
+		[]byte(fmt.Sprintf(`{"APP_FOO": "%s"}`, test0)),
 		0644)
 	require.NoError(t, err)
 	// Sample
 	err = ioutil.WriteFile(
 		filepath.Join(tmp, fmt.Sprintf("sample.config.%v.json", env)),
-		[]byte(`{"APP_FOO": "xxx"}`),
+		[]byte(fmt.Sprintf(`{"APP_FOO": "%s"}`, test0)),
 		0644)
 	require.NoError(t, err)
 
@@ -176,16 +177,13 @@ func TestUpdateConfigMulti(t *testing.T) {
 	require.NoError(t, err)
 	require.Equal(t, CmdUpdateConfig, out.Cmd)
 	require.Equal(t, 0, out.ExitCode)
-	for _, file := range out.Files {
-		m := make(map[string]string)
-		err = json.Unmarshal(file.Buf.Bytes(), &m)
-		require.NoError(t, err)
-		if strings.Contains(file.Path, "config.dev.json") {
-			require.Equal(t, test1, m["APP_FOO"], file.Path)
-		} else {
-			require.Equal(t, test0, m["APP_FOO"], file.Path)
-		}
-	}
+	require.Len(t, out.Files, 1)
+	file := out.Files[0]
+	require.Contains(t, file.Path, "config.dev.json")
+	m := make(map[string]string)
+	err = json.Unmarshal(file.Buf.Bytes(), &m)
+	require.NoError(t, err)
+	require.Equal(t, test1, m["APP_FOO"], file.Path)
 
 	// .........................................................................
 	test2 := "Only the non-sample files"
@@ -207,7 +205,7 @@ func TestUpdateConfigMulti(t *testing.T) {
 			strings.Contains(file.Path, "config.prod.json") {
 			require.Equal(t, test2, m["APP_FOO"], file.Path)
 		} else {
-			require.Equal(t, test0, m["APP_FOO"], file.Path)
+			t.Errorf("unexpected path %s", file.Path)
 		}
 	}
 
@@ -231,7 +229,7 @@ func TestUpdateConfigMulti(t *testing.T) {
 			strings.Contains(file.Path, "sample.config.prod.json") {
 			require.Equal(t, test3, m["APP_FOO"], file.Path)
 		} else {
-			require.Equal(t, test0, m["APP_FOO"], file.Path)
+			t.Errorf("unexpected path %s", file.Path)
 		}
 	}
 
@@ -247,6 +245,10 @@ func TestUpdateConfigMulti(t *testing.T) {
 	require.NoError(t, err)
 	require.Equal(t, CmdUpdateConfig, out.Cmd)
 	require.Equal(t, 0, out.ExitCode)
+	log.Debug().
+		Interface("test", test4).
+		Int("len", len(out.Files)).
+		Msg("")
 	for _, file := range out.Files {
 		m := make(map[string]string)
 		err = json.Unmarshal(file.Buf.Bytes(), &m)

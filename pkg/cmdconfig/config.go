@@ -193,6 +193,26 @@ func GetConfigFilePath(appDir string, env string) (string, error) {
 		appDir, fmt.Sprintf("%vconfig.%v.json", sample, env)), nil
 }
 
+func ReadConfigFile(appDir, env string) (configPath string, b []byte, err error) {
+	configPath, err = GetConfigFilePath(appDir, env)
+	if err != nil {
+		return configPath, b, err
+	}
+
+	b, err = ioutil.ReadFile(configPath)
+	if err != nil {
+		log.Error().Stack().Err(err).
+			Str("config_path", configPath).Msg("")
+		return configPath, b, errors.WithStack(err)
+	}
+
+	if strings.TrimSpace(string(b)) == "" {
+		return configPath, b, errors.WithStack(
+			fmt.Errorf("empty file %s", filepath.Base(configPath)))
+	}
+	return configPath, b, nil
+}
+
 // TODO This should be a method on Config?
 func RefreshKeys(c *Config) {
 	c.Keys = nil
@@ -207,25 +227,12 @@ func RefreshKeys(c *Config) {
 // NewConfig reads a config file and sets the key map.
 // If env is set on ConfigCache, use it, and avoid reading the file again
 func NewConfig(appDir string, env string) (configPath string, c *Config, err error) {
-	configPath, err = GetConfigFilePath(appDir, env)
-	if err != nil {
-		return configPath, c, err
-	}
-
 	// New config
 	c = &Config{}
 
-	// Read config file
-	b, err := ioutil.ReadFile(configPath)
+	configPath, b, err := ReadConfigFile(appDir, env)
 	if err != nil {
-		log.Error().Stack().Err(err).
-			Str("config_path", configPath).Msg("")
-		return configPath, c, errors.WithStack(err)
-	}
-
-	if strings.TrimSpace(string(b)) == "" {
-		return configPath, c, errors.WithStack(
-			fmt.Errorf("empty file %s", filepath.Base(configPath)))
+		return configPath, c, err
 	}
 
 	// Unmarshal config.
@@ -283,7 +290,7 @@ func compareKeys(in *CmdIn) (buf *bytes.Buffer, files []File, err error) {
 // .............................................................................
 
 // refreshConfigByEnv replaces the given key value pairs in the specified env,
-// and returns sorted JSON that can be used to replace the config file contents
+// and returns sorted JSON that can be used to update the config file
 func refreshConfigByEnv(
 	appDir string, prefix string, env string, keys ArgMap, values ArgMap, del bool) (
 	configPath string, b []byte, err error) {
@@ -305,7 +312,7 @@ func refreshConfigByEnv(
 		if !strings.HasPrefix(key, prefix) {
 			return configPath, b, errors.WithStack(
 				fmt.Errorf(
-					"key for env %s must strart with prefix %s", env, prefix))
+					"key for env %s must start with prefix %s", env, prefix))
 		}
 
 		if del {
