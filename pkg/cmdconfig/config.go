@@ -30,12 +30,6 @@ type Config struct {
 	Keys []string
 }
 
-// ConfigCache is used to avoid reading the same config file twice,
-// use full path to config file as the map key
-type ConfigCache map[string]*Config
-
-var configCache ConfigCache
-
 // .............................................................................
 
 // CmdIn for use with command functions
@@ -218,18 +212,6 @@ func NewConfig(appDir string, env string) (configPath string, c *Config, err err
 		return configPath, c, err
 	}
 
-	// Cached?
-	if configCache == nil {
-		// Init cache
-		configCache = make(ConfigCache)
-	} else {
-		var ok bool
-		if c, ok = configCache[configPath]; ok {
-			// Return cached config
-			return configPath, c, nil
-		}
-	}
-
 	// New config
 	c = &Config{}
 
@@ -255,9 +237,6 @@ func NewConfig(appDir string, env string) (configPath string, c *Config, err err
 	}
 
 	RefreshKeys(c)
-
-	// Add to cache
-	configCache[configPath] = c
 
 	return configPath, c, nil
 }
