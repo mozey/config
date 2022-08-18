@@ -40,12 +40,12 @@ func randString(n int) string {
 
 func TestGetPath(t *testing.T) {
 	appDir := randString(8)
-	_, err := GetConfigFilePath(appDir, "", FileTypeJSON)
+	_, err := getConfigFilePath(appDir, "", FileTypeJSON)
 	require.Error(t, err, "assumed path does not exist ", appDir)
 
 	appDir = "/"
 	env := "foo"
-	p, err := GetConfigFilePath(appDir, env, FileTypeJSON)
+	p, err := getConfigFilePath(appDir, env, FileTypeJSON)
 	require.NoError(t, err)
 	require.Equal(t, filepath.Join(appDir, fmt.Sprintf("config.%v.json", env)), p)
 }
@@ -95,7 +95,7 @@ func TestNewConfig(t *testing.T) {
 		0644)
 	require.NoError(t, err)
 
-	_, config, err := NewConfig(tmp, env)
+	_, config, err := newConf(tmp, env)
 	require.NoError(t, err)
 
 	require.Len(t, config.Keys, 2)
@@ -582,11 +582,11 @@ func TestGetEnvs(t *testing.T) {
 		0644)
 	require.NoError(t, err)
 
-	envs, err := GetEnvs(tmp, false)
+	envs, err := getEnvs(tmp, false)
 	require.NoError(t, err)
 	require.Equal(t, []string{"dev", "prod"}, envs)
 
-	envs, err = GetEnvs(tmp, true)
+	envs, err = getEnvs(tmp, true)
 	require.NoError(t, err)
 	require.Equal(t, []string{"sample.dev", "sample.prod"}, envs)
 }

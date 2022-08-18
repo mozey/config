@@ -18,12 +18,12 @@ import (
 
 // .............................................................................
 
-// Config file attributes.
-// Note, this is not the same struct as the generated config.Config,
+// conf file attributes.
+// Note, this is not the same struct as the generated config.conf,
 // e.g. pkg/cmdconfig/testdata/config.go
 // The latter has properties for each config attribute in a project,
 // whereas this type is generic
-type Config struct {
+type conf struct {
 	// Map of key to value
 	Map map[string]string
 	// Keys sorted
@@ -130,11 +130,11 @@ type CmdOut struct {
 
 // .............................................................................
 
-// ListSamples if set, otherwise list non-samples
-type ListSamples bool
+// listSamples if set, otherwise list non-samples
+type listSamples bool
 
-// GetEnvs globs all config files in APP_DIR to list possible values of env
-func GetEnvs(appDir string, samples ListSamples) (envs []string, err error) {
+// getEnvs globs all config files in APP_DIR to list possible values of env
+func getEnvs(appDir string, samples listSamples) (envs []string, err error) {
 	envs = make([]string, 0)
 
 	// Find matching files
@@ -175,10 +175,10 @@ const FileTypeEnv = ".env"   // e.g. .env
 const FileTypeJSON = ".json" // e.g. config.json
 const FileTypeYAML = ".yaml" // e.g. config.yaml
 
-// GetConfigFilePath returns the path to a config file.
+// getConfigFilePath returns the path to a config file.
 // It can also be used to return paths to sample config file by prefixing env,
 // for example, to get the path to "sample.config.dev.json" pass env="sample.dev"
-func GetConfigFilePath(appDir, env, fileType string) (string, error) {
+func getConfigFilePath(appDir, env, fileType string) (string, error) {
 	if _, err := os.Stat(appDir); err != nil {
 		if os.IsNotExist(err) {
 			return "", errors.WithStack(fmt.Errorf(
@@ -223,7 +223,7 @@ func getConfigFilePaths(appDir, env string) (paths []string, err error) {
 		FileTypeEnv,
 		FileTypeYAML,
 	} {
-		configPath, err := GetConfigFilePath(appDir, env, fileType)
+		configPath, err := getConfigFilePath(appDir, env, fileType)
 		if err != nil {
 			return paths, err
 		}
@@ -231,7 +231,7 @@ func getConfigFilePaths(appDir, env string) (paths []string, err error) {
 
 		// For the dev config file, the env is optional, i.e.
 		// "config.dev.json" or "config.json" are both valid dev config files
-		configPath, err = GetConfigFilePath(appDir, "", fileType)
+		configPath, err = getConfigFilePath(appDir, "", fileType)
 		if err != nil {
 			return paths, err
 		}
@@ -283,7 +283,7 @@ func ReadConfigFile(appDir, env string) (configPath string, b []byte, err error)
 }
 
 // TODO This should be a method on Config?
-func RefreshKeys(c *Config) {
+func refreshKeys(c *conf) {
 	c.Keys = nil
 	// Set config keys
 	for k := range c.Map {
@@ -293,11 +293,11 @@ func RefreshKeys(c *Config) {
 	sort.Strings(c.Keys)
 }
 
-// NewConfig reads a config file and sets the key map.
+// newConf reads a config file and sets the key map.
 // If env is set on ConfigCache, use it, and avoid reading the file again
-func NewConfig(appDir string, env string) (configPath string, c *Config, err error) {
+func newConf(appDir string, env string) (configPath string, c *conf, err error) {
 	// New config
-	c = &Config{}
+	c = &conf{}
 
 	configPath, b, err := ReadConfigFile(appDir, env)
 	if err != nil {
@@ -325,7 +325,7 @@ func NewConfig(appDir string, env string) (configPath string, c *Config, err err
 			"file type not implemented %s", fileType)
 	}
 
-	RefreshKeys(c)
+	refreshKeys(c)
 
 	return configPath, c, nil
 }
@@ -337,11 +337,11 @@ func NewConfig(appDir string, env string) (configPath string, c *Config, err err
 func compareKeys(in *CmdIn) (buf *bytes.Buffer, files []File, err error) {
 	buf = new(bytes.Buffer)
 
-	_, config, err := NewConfig(in.AppDir, in.Env)
+	_, config, err := newConf(in.AppDir, in.Env)
 	if err != nil {
 		return buf, files, err
 	}
-	_, compConfig, err := NewConfig(in.AppDir, in.Compare)
+	_, compConfig, err := newConf(in.AppDir, in.Compare)
 	if err != nil {
 		return buf, files, err
 	}
@@ -378,7 +378,7 @@ func refreshConfigByEnv(
 	configPath string, b []byte, err error) {
 
 	// Read config for the given env from file
-	configPath, conf, err := NewConfig(appDir, env)
+	configPath, conf, err := newConf(appDir, env)
 	if err != nil {
 		return configPath, b, err
 	}
@@ -415,7 +415,7 @@ func refreshConfigByEnv(
 			m[key] = value
 		}
 
-		RefreshKeys(conf)
+		refreshKeys(conf)
 	}
 
 	// TODO Switch on file type
@@ -435,12 +435,12 @@ func updateConfig(in *CmdIn) (buf *bytes.Buffer, files []File, err error) {
 
 	if in.All {
 		// All config files (non-sample and sample)
-		e, err := GetEnvs(in.AppDir, ListSamples(false))
+		e, err := getEnvs(in.AppDir, listSamples(false))
 		if err != nil {
 			return buf, files, err
 		}
 		envs = append(envs, e...)
-		e, err = GetEnvs(in.AppDir, ListSamples(true))
+		e, err = getEnvs(in.AppDir, listSamples(true))
 		if err != nil {
 			return buf, files, err
 		}
@@ -448,14 +448,14 @@ func updateConfig(in *CmdIn) (buf *bytes.Buffer, files []File, err error) {
 
 	} else if in.Env == "*" {
 		// Wildcard for non-sample config files
-		envs, err = GetEnvs(in.AppDir, ListSamples(false))
+		envs, err = getEnvs(in.AppDir, listSamples(false))
 		if err != nil {
 			return buf, files, err
 		}
 
 	} else if in.Env == "sample.*" {
 		// Wildcard for sample config files
-		envs, err = GetEnvs(in.AppDir, ListSamples(true))
+		envs, err = getEnvs(in.AppDir, listSamples(true))
 		if err != nil {
 			return buf, files, err
 		}
@@ -485,16 +485,16 @@ func updateConfig(in *CmdIn) (buf *bytes.Buffer, files []File, err error) {
 
 // .............................................................................
 
-type EnvKeys map[string]bool
+type envKeys map[string]bool
 
 func setEnv(in *CmdIn) (buf *bytes.Buffer, files []File, err error) {
-	_, config, err := NewConfig(in.AppDir, in.Env)
+	_, config, err := newConf(in.AppDir, in.Env)
 	if err != nil {
 		return buf, files, err
 	}
 
 	// Create map of env vars starting with Prefix
-	envKeys := EnvKeys{}
+	envKeys := envKeys{}
 	for _, v := range os.Environ() {
 		a := strings.Split(v, "=")
 		if len(a) == 2 {
@@ -550,7 +550,7 @@ func setEnv(in *CmdIn) (buf *bytes.Buffer, files []File, err error) {
 func generateCSV(in *CmdIn) (buf *bytes.Buffer, files []File, err error) {
 	buf = new(bytes.Buffer)
 
-	_, config, err := NewConfig(in.AppDir, in.Env)
+	_, config, err := newConf(in.AppDir, in.Env)
 	if err != nil {
 		return buf, files, err
 	}
@@ -583,7 +583,7 @@ func generateCSV(in *CmdIn) (buf *bytes.Buffer, files []File, err error) {
 func encodeBase64(in *CmdIn) (buf *bytes.Buffer, files []File, err error) {
 	buf = new(bytes.Buffer)
 
-	_, config, err := NewConfig(in.AppDir, in.Env)
+	_, config, err := newConf(in.AppDir, in.Env)
 	if err != nil {
 		return buf, files, err
 	}
@@ -604,7 +604,7 @@ func printValue(in *CmdIn) (buf *bytes.Buffer, files []File, err error) {
 	buf = new(bytes.Buffer)
 	key := in.PrintValue
 
-	_, config, err := NewConfig(in.AppDir, in.Env)
+	_, config, err := newConf(in.AppDir, in.Env)
 	if err != nil {
 		return buf, files, err
 	}
