@@ -171,9 +171,9 @@ func GetEnvs(appDir string, samples ListSamples) (envs []string, err error) {
 
 const SamplePrefix = "sample."
 
-const FileTypeEnv = "env"   // e.g. .env
-const FileTypeJSON = "json" // e.g. config.json
-const FileTypeYAML = "yaml" // e.g. config.yaml
+const FileTypeEnv = ".env"   // e.g. .env
+const FileTypeJSON = ".json" // e.g. config.json
+const FileTypeYAML = ".yaml" // e.g. config.yaml
 
 // GetConfigFilePath returns the path to a config file.
 // It can also be used to return paths to sample config file by prefixing env,
@@ -195,9 +195,9 @@ func GetConfigFilePath(appDir, env, fileType string) (string, error) {
 		env = strings.Replace(env, SamplePrefix, "", 1)
 	}
 
-	fileNameFormat := "%vconfig.%v.%v" // e.g. sample.config.dev.json
+	fileNameFormat := "%vconfig.%v%v" // e.g. sample.config.dev.json
 	if fileType == FileTypeEnv {
-		fileNameFormat = "%v.%v.%v" // e.g. sample.dev.env
+		fileNameFormat = "%v.%v%v" // e.g. sample.dev.env
 	}
 
 	return filepath.Join(
@@ -317,6 +317,7 @@ func compareKeys(in *CmdIn) (buf *bytes.Buffer, files []File, err error) {
 	unmatched := make([]string, 0, len(config.Keys)+len(compConfig.Keys))
 
 	// Compare config keys
+	log.Debug().Strs("keys", config.Keys).Msg("")
 	for _, item := range config.Keys {
 		if _, ok := compConfig.Map[item]; !ok {
 			unmatched = append(unmatched, item)

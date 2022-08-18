@@ -50,6 +50,59 @@ func TestGetPath(t *testing.T) {
 	require.Equal(t, filepath.Join(appDir, fmt.Sprintf("config.%v.json", env)), p)
 }
 
+func TestFileTypes(t *testing.T) {
+	configPaths := []string{
+		".env",
+		"prod.env",
+		"sample.dev.env",
+	}
+	for _, configPath := range configPaths {
+		fileType := filepath.Ext(configPath)
+		require.Equal(t, FileTypeEnv, fileType)
+	}
+	configPaths = []string{
+		"config.json",
+		"config.prod.json",
+		"sample.config.dev.json",
+	}
+	for _, configPath := range configPaths {
+		fileType := filepath.Ext(configPath)
+		require.Equal(t, FileTypeJSON, fileType)
+	}
+	configPaths = []string{
+		"config.yaml",
+		"config.prod.yaml",
+		"sample.config.dev.yaml",
+	}
+	for _, configPath := range configPaths {
+		fileType := filepath.Ext(configPath)
+		require.Equal(t, FileTypeYAML, fileType)
+	}
+}
+
+func TestNewConfig(t *testing.T) {
+	tmp, err := ioutil.TempDir("", "mozey-config")
+	require.NoError(t, err)
+	defer (func() {
+		_ = os.RemoveAll(tmp)
+	})()
+
+	env := "dev"
+
+	err = ioutil.WriteFile(
+		filepath.Join(tmp, fmt.Sprintf("config.%v.json", env)),
+		[]byte(`{"APP_FOO": "foo", "APP_BAR": "bar"}`),
+		0644)
+	require.NoError(t, err)
+
+	_, config, err := NewConfig(tmp, env)
+	require.NoError(t, err)
+
+	require.Len(t, config.Keys, 2)
+	require.Equal(t, config.Map["APP_FOO"], "foo")
+	require.Equal(t, config.Map["APP_BAR"], "bar")
+}
+
 func TestCompareKeys(t *testing.T) {
 	tmp, err := ioutil.TempDir("", "mozey-config")
 	require.NoError(t, err)
@@ -80,10 +133,10 @@ func TestCompareKeys(t *testing.T) {
 	out, err := Cmd(in)
 	require.NoError(t, err)
 	require.Equal(t, CmdCompare, out.Cmd)
-	require.Equal(t, 1, out.ExitCode)
 	require.Equal(t,
 		"APP_BAR\nAPP_FOO\n",
-		out.Buf.String())
+		out.Buf.String(), "Non-matching keys must be listed")
+	require.Equal(t, 1, out.ExitCode)
 }
 
 func TestUpdateConfigSingleJSON(t *testing.T) {
