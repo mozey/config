@@ -13,7 +13,7 @@ Other files types are also supported.
 Load precedence for default `${ENV}=dev`
 - config.dev.json
 - config.json
-- .env.dev
+- dev.env
 - .env
 - config.dev.yaml
 - config.yaml

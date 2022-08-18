@@ -195,28 +195,60 @@ func GetConfigFilePath(appDir, env, fileType string) (string, error) {
 		env = strings.Replace(env, SamplePrefix, "", 1)
 	}
 
-	fileNameFormat := "%vconfig.%v%v" // e.g. sample.config.dev.json
+	// If env is not empty, add dot separator.
+	if fileType != FileTypeEnv {
+		if strings.TrimSpace(env) != "" {
+			env = fmt.Sprintf(".%s", env)
+		}
+	}
+
+	// Format for FileTypeEnv is slightly different,
+	// it does not contain the word "config" (by popular convention)
+	fileNameFormat := "%vconfig%v%v" // e.g. sample.config.dev.json
 	if fileType == FileTypeEnv {
-		fileNameFormat = "%v.%v%v" // e.g. sample.dev.env
+		fileNameFormat = "%v%v%v" // e.g. sample.dev.env
 	}
 
 	return filepath.Join(
 		appDir, fmt.Sprintf(fileNameFormat, sample, env, fileType)), nil
 }
 
-func ReadConfigFile(appDir, env string) (configPath string, b []byte, err error) {
-	found := false
+// getConfigFilePaths defines the load precedence
+func getConfigFilePaths(appDir, env string) (paths []string, err error) {
+	paths = []string{}
+
 	for _, fileType := range []string{
 		// Load precedence
 		FileTypeJSON,
 		FileTypeEnv,
 		FileTypeYAML,
 	} {
-		configPath, err = GetConfigFilePath(appDir, env, fileType)
+		configPath, err := GetConfigFilePath(appDir, env, fileType)
 		if err != nil {
-			return configPath, b, err
+			return paths, err
 		}
+		paths = append(paths, configPath)
 
+		// For the dev config file, the env is optional, i.e.
+		// "config.dev.json" or "config.json" are both valid dev config files
+		configPath, err = GetConfigFilePath(appDir, "", fileType)
+		if err != nil {
+			return paths, err
+		}
+		paths = append(paths, configPath)
+	}
+
+	return paths, nil
+}
+
+func ReadConfigFile(appDir, env string) (configPath string, b []byte, err error) {
+	found := false
+	paths, err := getConfigFilePaths(appDir, env)
+	if err != nil {
+		return configPath, b, err
+	}
+	// Don't change scope of configPath variable!
+	for _, configPath = range paths {
 		_, err := os.Stat(appDir)
 		if err != nil {
 			if os.IsNotExist(err) {
@@ -317,7 +349,6 @@ func compareKeys(in *CmdIn) (buf *bytes.Buffer, files []File, err error) {
 	unmatched := make([]string, 0, len(config.Keys)+len(compConfig.Keys))
 
 	// Compare config keys
-	log.Debug().Strs("keys", config.Keys).Msg("")
 	for _, item := range config.Keys {
 		if _, ok := compConfig.Map[item]; !ok {
 			unmatched = append(unmatched, item)
