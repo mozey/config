@@ -308,24 +308,17 @@ func newConf(appDir string, env string) (configPath string, c *conf, err error) 
 	// Unmarshal config.
 	// The config file must have a flat key value structure
 	fileType := filepath.Ext(configPath)
+	var UnmarshalErr error
 	if fileType == FileTypeEnv {
-		// TODO
-		return configPath, c, errors.Errorf(
-			"file type not implemented %s", fileType)
-
+		c.Map, UnmarshalErr = UnmarshalENV(b)
 	} else if fileType == FileTypeJSON {
-		err = json.Unmarshal(b, &c.Map)
-		if err != nil {
-			log.Info().Str("config_path", configPath).Msg("")
-			return configPath, c, errors.WithStack(err)
-		}
-
+		UnmarshalErr = json.Unmarshal(b, &c.Map)
 	} else if fileType == FileTypeYAML {
-		err = yaml.Unmarshal(b, &c.Map)
-		if err != nil {
-			log.Info().Str("config_path", configPath).Msg("")
-			return configPath, c, errors.WithStack(err)
-		}
+		UnmarshalErr = yaml.Unmarshal(b, &c.Map)
+	}
+	if UnmarshalErr != nil {
+		log.Info().Str("config_path", configPath).Msg("")
+		return configPath, c, errors.WithStack(err)
 	}
 
 	refreshKeys(c)

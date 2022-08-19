@@ -80,32 +80,31 @@ func TestFileTypes(t *testing.T) {
 	}
 }
 
-// TODO
-// func TestNewConfigENV(t *testing.T) {
-// 	tmp, err := ioutil.TempDir("", "mozey-config")
-// 	require.NoError(t, err)
-// 	defer (func() {
-// 		// _ = os.RemoveAll(tmp)
-// 	})()
+func TestNewConfigENV(t *testing.T) {
+	tmp, err := ioutil.TempDir("", "mozey-config")
+	require.NoError(t, err)
+	defer (func() {
+		_ = os.RemoveAll(tmp)
+	})()
 
-// 	env := "dev"
+	env := "dev"
 
-// 	configPath := filepath.Join(tmp, ".env")
-// 	err = ioutil.WriteFile(
-// 		configPath,
-// 		[]byte("APP_FOO=foo\nAPP_BAR=bar\n"),
-// 		0644)
-// 	require.NoError(t, err)
+	configPath := filepath.Join(tmp, ".env")
+	err = ioutil.WriteFile(
+		configPath,
+		[]byte("APP_FOO=foo\nAPP_BAR=bar\n"),
+		0644)
+	require.NoError(t, err)
 
-// 	_, config, err := newConf(tmp, env)
-// 	require.NoError(t, err)
-// 	require.Len(t, config.Keys, 2)
-// 	require.Equal(t, config.Map["APP_FOO"], "foo")
-// 	require.Equal(t, config.Map["APP_BAR"], "bar")
+	_, config, err := newConf(tmp, env)
+	require.NoError(t, err)
+	require.Len(t, config.Keys, 2)
+	require.Equal(t, config.Map["APP_FOO"], "foo")
+	require.Equal(t, config.Map["APP_BAR"], "bar")
 
-// 	err = os.Remove(configPath)
-// 	require.NoError(t, err)
-// }
+	err = os.Remove(configPath)
+	require.NoError(t, err)
+}
 
 func TestNewConfigJSON(t *testing.T) {
 	tmp, err := ioutil.TempDir("", "mozey-config")
