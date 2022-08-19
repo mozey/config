@@ -14,6 +14,7 @@ import (
 
 	"github.com/pkg/errors"
 	"github.com/rs/zerolog/log"
+	"gopkg.in/yaml.v2"
 )
 
 // .............................................................................
@@ -249,10 +250,10 @@ func ReadConfigFile(appDir, env string) (configPath string, b []byte, err error)
 	}
 	// Don't change scope of configPath variable!
 	for _, configPath = range paths {
-		_, err := os.Stat(appDir)
+		_, err := os.Stat(configPath)
 		if err != nil {
 			if os.IsNotExist(err) {
-				log.Debug().Str("config_path", configPath).Msg("Not found")
+				// log.Debug().Str("config_path", configPath).Msg("Not found")
 				continue
 			} else {
 				return configPath, b, errors.WithStack(err)
@@ -320,9 +321,11 @@ func newConf(appDir string, env string) (configPath string, c *conf, err error) 
 		}
 
 	} else if fileType == FileTypeYAML {
-		// TODO
-		return configPath, c, errors.Errorf(
-			"file type not implemented %s", fileType)
+		err = yaml.Unmarshal(b, &c.Map)
+		if err != nil {
+			log.Info().Str("config_path", configPath).Msg("")
+			return configPath, c, errors.WithStack(err)
+		}
 	}
 
 	refreshKeys(c)
@@ -418,11 +421,23 @@ func refreshConfigByEnv(
 		refreshKeys(conf)
 	}
 
-	// TODO Switch on file type
-	// Marshal config JSON
-	b, err = json.MarshalIndent(m, "", "    ")
-	if err != nil {
-		return configPath, b, errors.WithStack(err)
+	// Marshal config...
+	fileType := filepath.Ext(configPath)
+	if fileType == FileTypeEnv {
+		// TODO
+
+	} else if fileType == FileTypeJSON {
+		// ...to JSON
+		b, err = json.MarshalIndent(m, "", "    ")
+		if err != nil {
+			return configPath, b, errors.WithStack(err)
+		}
+
+	} else if fileType == FileTypeYAML {
+		b, err = yaml.Marshal(m)
+		if err != nil {
+			return configPath, b, errors.WithStack(err)
+		}
 	}
 
 	return configPath, b, nil
