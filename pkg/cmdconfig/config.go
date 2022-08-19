@@ -318,7 +318,7 @@ func newConf(appDir string, env string) (configPath string, c *conf, err error) 
 	}
 	if UnmarshalErr != nil {
 		log.Info().Str("config_path", configPath).Msg("")
-		return configPath, c, errors.WithStack(err)
+		return configPath, c, errors.WithStack(UnmarshalErr)
 	}
 
 	refreshKeys(c)
@@ -414,23 +414,18 @@ func refreshConfigByEnv(
 		refreshKeys(conf)
 	}
 
-	// Marshal config...
+	// Marshal config
 	fileType := filepath.Ext(configPath)
+	var MarshalErr error
 	if fileType == FileTypeEnv {
-		// TODO
-
+		b, MarshalErr = MarshalENV(m)
 	} else if fileType == FileTypeJSON {
-		// ...to JSON
-		b, err = json.MarshalIndent(m, "", "    ")
-		if err != nil {
-			return configPath, b, errors.WithStack(err)
-		}
-
+		b, MarshalErr = json.MarshalIndent(m, "", "    ")
 	} else if fileType == FileTypeYAML {
-		b, err = yaml.Marshal(m)
-		if err != nil {
-			return configPath, b, errors.WithStack(err)
-		}
+		b, MarshalErr = yaml.Marshal(m)
+	}
+	if MarshalErr != nil {
+		return configPath, b, errors.WithStack(MarshalErr)
 	}
 
 	return configPath, b, nil
