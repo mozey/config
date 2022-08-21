@@ -109,7 +109,7 @@ func TestGenerateHelpersSave(t *testing.T) {
 		"Unexpected number of files")
 
 	// Write the files
-	// TODO in.Process call fmt.Println,
+	// TODO in.Process calls fmt.Println,
 	// temporarily capture stdout to avoid cluttering test output?
 	// See https://github.com/mozey/go-capturer
 	exitCode, err := in.Process(out)
