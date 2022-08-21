@@ -63,6 +63,8 @@ type CmdIn struct {
 	Base64 bool
 	// OS overrides the compiled x-platform config
 	OS string
+	// Override config file format
+	Format string
 }
 
 // .............................................................................
@@ -371,7 +373,8 @@ func compareKeys(in *CmdIn) (buf *bytes.Buffer, files []File, err error) {
 // refreshConfigByEnv replaces the given key value pairs in the specified env,
 // and returns sorted bytes that can be used to update the config file
 func refreshConfigByEnv(
-	appDir string, prefix string, env string, keys ArgMap, values ArgMap, del bool) (
+	appDir string, prefix string, env string, keys ArgMap, values ArgMap,
+	del bool, format string) (
 	configPath string, b []byte, err error) {
 
 	// Read config for the given env from file
@@ -418,6 +421,17 @@ func refreshConfigByEnv(
 	// Marshal config
 	fileType := filepath.Ext(configPath)
 	var MarshalErr error
+	dotFormat := fmt.Sprintf(".%s", format)
+	if dotFormat == FileTypeEnv ||
+		dotFormat == FileTypeJSON ||
+		dotFormat == FileTypeYAML {
+		//	Override config file format
+		fileType = dotFormat
+		configPath, err = getConfigFilePath(appDir, env, dotFormat)
+		if err != nil {
+			return configPath, b, err
+		}
+	}
 	if fileType == FileTypeEnv {
 		b, MarshalErr = MarshalENV(m)
 	} else if fileType == FileTypeJSON {
@@ -474,7 +488,7 @@ func updateConfig(in *CmdIn) (buf *bytes.Buffer, files []File, err error) {
 	for i, env := range envs {
 		var configPath string
 		configPath, b, err = refreshConfigByEnv(
-			in.AppDir, in.Prefix, env, in.Keys, in.Values, in.Del)
+			in.AppDir, in.Prefix, env, in.Keys, in.Values, in.Del, in.Format)
 		if err != nil {
 			return buf, files, err
 		}

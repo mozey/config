@@ -19,7 +19,12 @@
 
 /configu
 
+/config.json
 /config.dev.json
+/config.yaml
+/config.dev.yaml
+/dev.env
+/.env
 /config.prod.json
 
 /_excluded
