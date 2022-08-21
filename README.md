@@ -70,6 +70,11 @@ and `sample.config.*.json` files in APP_DIR
 ${GOPATH}/bin/configu -all -key APP_FOO -value xxx
 ```
 
+Convert config file to different format
+```sh
+${GOPATH}/bin/configu -format yaml
+```
+
 
 ## Toggling env
 
