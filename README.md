@@ -6,7 +6,17 @@ Apps must not set or source their own config, instead
 [Env vars](https://en.wikipedia.org/wiki/Environment_variable) 
 must be set in the parent process.
 
-Manage env vars with a flat `config.ENV.json` file, default `ENV=dev`
+Manage env vars with a flat `config.${ENV}.json` file, by default `${ENV}=dev`
+
+Other files types are also supported.
+
+Load precedence for default `${ENV}=dev`
+- config.dev.json
+- config.json
+- dev.env
+- .env
+- config.dev.yaml
+- config.yaml
 
 `mozey/config` has the following components
 - Command to manage the env: `configu`
@@ -58,6 +68,11 @@ Set a key value for all `config.*.json`
 and `sample.config.*.json` files in APP_DIR
 ```sh
 ${GOPATH}/bin/configu -all -key APP_FOO -value xxx
+```
+
+Convert config file to different format
+```sh
+${GOPATH}/bin/configu -format yaml
 ```
 
 

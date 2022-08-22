@@ -35,6 +35,7 @@ const (
 	FlagSep      = "sep"
 	FlagValue    = "value"
 	FlagOS       = "os"
+	FlagFormat   = "format"
 )
 
 // ParseFlags before calling Cmd
@@ -77,6 +78,8 @@ func ParseFlags() *CmdIn {
 	flag.StringVar(&in.OS,
 		FlagOS, "other",
 		"Override compiled x-platform config")
+	flag.StringVar(&in.Format,
+		FlagFormat, "", "Override config file format")
 
 	flag.Parse()
 

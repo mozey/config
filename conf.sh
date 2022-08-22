@@ -25,17 +25,14 @@ conf() {
     fi
 
     # Set env as per config file
-    if test -f "${APP_DIR}/config.${ENV}.json"; then
-        if OUTPUT="$("${GOPATH}"/bin/configu -os linux -env ${ENV})"; then
-            eval "$OUTPUT"
-            eval "export APP_DIR=$(pwd)"
-            # Checking retVal with $? won't work here
-            printenv | sort | grep --color -E "APP_|AWS_"
-        else
-            echo "$OUTPUT"
-        fi
+    if OUTPUT="$("${GOPATH}"/bin/configu -os linux -env ${ENV})"; then
+        eval "$OUTPUT"
+        eval "export APP_DIR=$(pwd)"
+        # Checking retVal with $? won't work here
+        printenv | sort | grep --color -E "APP_|AWS_"
+        return 0
     else
-        echo "${APP_DIR}/config.${ENV}.json not found"
+        echo "$OUTPUT"
         return 1
     fi
 }

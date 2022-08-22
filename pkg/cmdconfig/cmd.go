@@ -68,8 +68,9 @@ func Cmd(in *CmdIn) (out *CmdOut, err error) {
 		out.Files = files
 		return out, nil
 
-	} else if len(in.Keys) > 0 {
-		// Update config key value pairs
+	} else if len(in.Keys) > 0 || in.Format != "" {
+		// Update config key value pairs,
+		// and/or override output format
 		buf, files, err := updateConfig(in)
 		if err != nil {
 			return out, err
