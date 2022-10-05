@@ -19,13 +19,9 @@
 
 /configu
 
-/config.json
-/config.dev.json
-/config.yaml
-/config.dev.yaml
+/config*
 /dev.env
 /.env
-/config.prod.json
 
 /_excluded
 
