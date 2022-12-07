@@ -151,8 +151,9 @@ func getEnvs(appDir string, samples listSamples) (envs []string, err error) {
 		return envs, errors.WithStack(err)
 	}
 
-	// Regexp to submatch env from file name
-	s := "config\\.(\\w*)\\.json"
+	// Regexp to submatch env from file name.
+	// Env must start with a word character, and may contain hyphens
+	s := "config\\.(\\w+[\\w\\-]*)\\.json"
 	r, err := regexp.Compile(s)
 	if err != nil {
 		return envs, errors.WithStack(err)

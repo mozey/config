@@ -270,6 +270,20 @@ func TestUpdateConfigMulti(t *testing.T) {
 		0644)
 	require.NoError(t, err)
 
+	env = "stage-ec2"
+	// Non-sample
+	err = ioutil.WriteFile(
+		filepath.Join(tmp, fmt.Sprintf("config.%v.json", env)),
+		[]byte(fmt.Sprintf(`{"APP_FOO": "%s"}`, test0)),
+		0644)
+	require.NoError(t, err)
+	// Sample
+	err = ioutil.WriteFile(
+		filepath.Join(tmp, fmt.Sprintf("sample.config.%v.json", env)),
+		[]byte(fmt.Sprintf(`{"APP_FOO": "%s"}`, test0)),
+		0644)
+	require.NoError(t, err)
+
 	var in *CmdIn
 	var out *CmdOut
 
@@ -305,11 +319,13 @@ func TestUpdateConfigMulti(t *testing.T) {
 	require.NoError(t, err)
 	require.Equal(t, CmdUpdateConfig, out.Cmd)
 	require.Equal(t, 0, out.ExitCode)
+	require.Len(t, out.Files, 3)
 	for _, file := range out.Files {
 		m := make(map[string]string)
 		err = json.Unmarshal(file.Buf.Bytes(), &m)
 		require.NoError(t, err)
 		if strings.Contains(file.Path, "config.dev.json") ||
+			strings.Contains(file.Path, "config.stage-ec2.json") ||
 			strings.Contains(file.Path, "config.prod.json") {
 			require.Equal(t, test2, m["APP_FOO"], file.Path)
 		} else {
@@ -329,11 +345,13 @@ func TestUpdateConfigMulti(t *testing.T) {
 	require.NoError(t, err)
 	require.Equal(t, CmdUpdateConfig, out.Cmd)
 	require.Equal(t, 0, out.ExitCode)
+	require.Len(t, out.Files, 3)
 	for _, file := range out.Files {
 		m := make(map[string]string)
 		err = json.Unmarshal(file.Buf.Bytes(), &m)
 		require.NoError(t, err)
 		if strings.Contains(file.Path, "sample.config.dev.json") ||
+			strings.Contains(file.Path, "sample.config.stage-ec2.json") ||
 			strings.Contains(file.Path, "sample.config.prod.json") {
 			require.Equal(t, test3, m["APP_FOO"], file.Path)
 		} else {
@@ -357,6 +375,7 @@ func TestUpdateConfigMulti(t *testing.T) {
 		Interface("test", test4).
 		Int("len", len(out.Files)).
 		Msg("")
+	require.Len(t, out.Files, 6)
 	for _, file := range out.Files {
 		m := make(map[string]string)
 		err = json.Unmarshal(file.Buf.Bytes(), &m)
@@ -636,12 +655,23 @@ func TestGetEnvs(t *testing.T) {
 		[]byte(`{}`),
 		0644)
 	require.NoError(t, err)
+	err = ioutil.WriteFile(
+		filepath.Join(tmp, "config.stage-ec2.json"),
+		[]byte(`{}`),
+		0644)
+	require.NoError(t, err)
+	err = ioutil.WriteFile(
+		filepath.Join(tmp, "sample.config.stage-ec2.json"),
+		[]byte(`{}`),
+		0644)
+	require.NoError(t, err)
 
 	envs, err := getEnvs(tmp, false)
 	require.NoError(t, err)
-	require.Equal(t, []string{"dev", "prod"}, envs)
+	require.Equal(t, []string{"dev", "prod", "stage-ec2"}, envs)
 
 	envs, err = getEnvs(tmp, true)
 	require.NoError(t, err)
-	require.Equal(t, []string{"sample.dev", "sample.prod"}, envs)
+	require.Equal(
+		t, []string{"sample.dev", "sample.prod", "sample.stage-ec2"}, envs)
 }
