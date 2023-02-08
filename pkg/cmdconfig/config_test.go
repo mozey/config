@@ -5,7 +5,6 @@ import (
 	"encoding/base64"
 	"encoding/json"
 	"fmt"
-	"io/ioutil"
 	"math/rand"
 	"os"
 	"path/filepath"
@@ -81,7 +80,7 @@ func TestFileTypes(t *testing.T) {
 }
 
 func TestNewConfigENV(t *testing.T) {
-	tmp, err := ioutil.TempDir("", "mozey-config")
+	tmp, err := os.MkdirTemp("", "mozey-config")
 	require.NoError(t, err)
 	defer (func() {
 		_ = os.RemoveAll(tmp)
@@ -90,7 +89,7 @@ func TestNewConfigENV(t *testing.T) {
 	env := "dev"
 
 	configPath := filepath.Join(tmp, ".env")
-	err = ioutil.WriteFile(
+	err = os.WriteFile(
 		configPath,
 		[]byte("APP_FOO=foo\nAPP_BAR=bar\n"),
 		0644)
@@ -107,7 +106,7 @@ func TestNewConfigENV(t *testing.T) {
 }
 
 func TestNewConfigJSON(t *testing.T) {
-	tmp, err := ioutil.TempDir("", "mozey-config")
+	tmp, err := os.MkdirTemp("", "mozey-config")
 	require.NoError(t, err)
 	defer (func() {
 		_ = os.RemoveAll(tmp)
@@ -116,7 +115,7 @@ func TestNewConfigJSON(t *testing.T) {
 	env := "dev"
 
 	configPath := filepath.Join(tmp, "config.json")
-	err = ioutil.WriteFile(
+	err = os.WriteFile(
 		configPath,
 		[]byte(`{"APP_FOO": "foo", "APP_BAR": "bar"}`),
 		0644)
@@ -133,7 +132,7 @@ func TestNewConfigJSON(t *testing.T) {
 }
 
 func TestNewConfigYAML(t *testing.T) {
-	tmp, err := ioutil.TempDir("", "mozey-config")
+	tmp, err := os.MkdirTemp("", "mozey-config")
 	require.NoError(t, err)
 	defer (func() {
 		_ = os.RemoveAll(tmp)
@@ -142,7 +141,7 @@ func TestNewConfigYAML(t *testing.T) {
 	env := "dev"
 
 	configPath := filepath.Join(tmp, "config.yaml")
-	err = ioutil.WriteFile(
+	err = os.WriteFile(
 		configPath,
 		[]byte("APP_FOO: foo\nAPP_BAR: bar\n"),
 		0644)
@@ -159,7 +158,7 @@ func TestNewConfigYAML(t *testing.T) {
 }
 
 func TestCompareKeys(t *testing.T) {
-	tmp, err := ioutil.TempDir("", "mozey-config")
+	tmp, err := os.MkdirTemp("", "mozey-config")
 	require.NoError(t, err)
 	defer (func() {
 		_ = os.RemoveAll(tmp)
@@ -168,12 +167,12 @@ func TestCompareKeys(t *testing.T) {
 	env := "dev"
 	compare := "prod"
 
-	err = ioutil.WriteFile(
+	err = os.WriteFile(
 		filepath.Join(tmp, fmt.Sprintf("config.%v.json", env)),
 		[]byte(`{"APP_ONE": "1", "APP_FOO": "foo"}`),
 		0644)
 	require.NoError(t, err)
-	err = ioutil.WriteFile(
+	err = os.WriteFile(
 		filepath.Join(tmp, fmt.Sprintf("config.%v.json", compare)),
 		[]byte(`{"APP_BAR": "bar", "APP_ONE": "1"}`),
 		0644)
@@ -195,7 +194,7 @@ func TestCompareKeys(t *testing.T) {
 }
 
 func TestUpdateConfigSingleJSON(t *testing.T) {
-	tmp, err := ioutil.TempDir("", "mozey-config")
+	tmp, err := os.MkdirTemp("", "mozey-config")
 	require.NoError(t, err)
 	defer (func() {
 		_ = os.RemoveAll(tmp)
@@ -203,7 +202,7 @@ func TestUpdateConfigSingleJSON(t *testing.T) {
 
 	env := "dev"
 
-	err = ioutil.WriteFile(
+	err = os.WriteFile(
 		filepath.Join(tmp, fmt.Sprintf("config.%v.json", env)),
 		[]byte(`{"APP_FOO": "foo", "APP_BAR": "bar"}`),
 		0644)
@@ -232,7 +231,7 @@ func TestUpdateConfigSingleJSON(t *testing.T) {
 }
 
 func TestUpdateConfigMulti(t *testing.T) {
-	tmp, err := ioutil.TempDir("", "mozey-config")
+	tmp, err := os.MkdirTemp("", "mozey-config")
 	require.NoError(t, err)
 	defer (func() {
 		// log.Info().Str("tmp", tmp).Msg("")
@@ -244,13 +243,13 @@ func TestUpdateConfigMulti(t *testing.T) {
 
 	env := "dev"
 	// Non-sample
-	err = ioutil.WriteFile(
+	err = os.WriteFile(
 		filepath.Join(tmp, fmt.Sprintf("config.%v.json", env)),
 		[]byte(fmt.Sprintf(`{"APP_FOO": "%s"}`, test0)),
 		0644)
 	require.NoError(t, err)
 	// Sample
-	err = ioutil.WriteFile(
+	err = os.WriteFile(
 		filepath.Join(tmp, fmt.Sprintf("sample.config.%v.json", env)),
 		[]byte(fmt.Sprintf(`{"APP_FOO": "%s"}`, test0)),
 		0644)
@@ -258,13 +257,13 @@ func TestUpdateConfigMulti(t *testing.T) {
 
 	env = "prod"
 	// Non-sample
-	err = ioutil.WriteFile(
+	err = os.WriteFile(
 		filepath.Join(tmp, fmt.Sprintf("config.%v.json", env)),
 		[]byte(fmt.Sprintf(`{"APP_FOO": "%s"}`, test0)),
 		0644)
 	require.NoError(t, err)
 	// Sample
-	err = ioutil.WriteFile(
+	err = os.WriteFile(
 		filepath.Join(tmp, fmt.Sprintf("sample.config.%v.json", env)),
 		[]byte(fmt.Sprintf(`{"APP_FOO": "%s"}`, test0)),
 		0644)
@@ -272,13 +271,13 @@ func TestUpdateConfigMulti(t *testing.T) {
 
 	env = "stage-ec2"
 	// Non-sample
-	err = ioutil.WriteFile(
+	err = os.WriteFile(
 		filepath.Join(tmp, fmt.Sprintf("config.%v.json", env)),
 		[]byte(fmt.Sprintf(`{"APP_FOO": "%s"}`, test0)),
 		0644)
 	require.NoError(t, err)
 	// Sample
-	err = ioutil.WriteFile(
+	err = os.WriteFile(
 		filepath.Join(tmp, fmt.Sprintf("sample.config.%v.json", env)),
 		[]byte(fmt.Sprintf(`{"APP_FOO": "%s"}`, test0)),
 		0644)
@@ -386,7 +385,7 @@ func TestUpdateConfigMulti(t *testing.T) {
 }
 
 func TestSetEnv(t *testing.T) {
-	tmp, err := ioutil.TempDir("", "mozey-config")
+	tmp, err := os.MkdirTemp("", "mozey-config")
 	require.NoError(t, err)
 	defer (func() {
 		_ = os.RemoveAll(tmp)
@@ -394,7 +393,7 @@ func TestSetEnv(t *testing.T) {
 
 	env := "dev"
 
-	err = ioutil.WriteFile(
+	err = os.WriteFile(
 		filepath.Join(tmp, fmt.Sprintf("config.%v.json", env)),
 		[]byte(`{"APP_BAR": "bar"}`),
 		0644)
@@ -425,7 +424,7 @@ func TestSetEnv(t *testing.T) {
 }
 
 func TestCSV(t *testing.T) {
-	tmp, err := ioutil.TempDir("", "mozey-config")
+	tmp, err := os.MkdirTemp("", "mozey-config")
 	require.NoError(t, err)
 	defer (func() {
 		_ = os.RemoveAll(tmp)
@@ -433,7 +432,7 @@ func TestCSV(t *testing.T) {
 
 	env := "dev"
 
-	err = ioutil.WriteFile(
+	err = os.WriteFile(
 		filepath.Join(tmp, fmt.Sprintf("config.%v.json", env)),
 		[]byte(`{"APP_FOO": "foo", "APP_BAR": "bar"}`),
 		0644)
@@ -461,7 +460,7 @@ func TestCSV(t *testing.T) {
 }
 
 func TestBase64(t *testing.T) {
-	tmp, err := ioutil.TempDir("", "mozey-config")
+	tmp, err := os.MkdirTemp("", "mozey-config")
 	require.NoError(t, err)
 	defer (func() {
 		_ = os.RemoveAll(tmp)
@@ -469,7 +468,7 @@ func TestBase64(t *testing.T) {
 
 	env := "dev"
 
-	err = ioutil.WriteFile(
+	err = os.WriteFile(
 		filepath.Join(tmp, fmt.Sprintf("config.%v.json", env)),
 		[]byte(`{"APP_FOO": "foo", "APP_BAR": "bar"}`),
 		0644)
@@ -495,7 +494,7 @@ func TestBase64(t *testing.T) {
 }
 
 func TestGet(t *testing.T) {
-	tmp, err := ioutil.TempDir("", "mozey-config")
+	tmp, err := os.MkdirTemp("", "mozey-config")
 	require.NoError(t, err)
 	defer (func() {
 		_ = os.RemoveAll(tmp)
@@ -503,7 +502,7 @@ func TestGet(t *testing.T) {
 
 	env := "dev"
 
-	err = ioutil.WriteFile(
+	err = os.WriteFile(
 		filepath.Join(tmp, fmt.Sprintf("config.%v.json", env)),
 		[]byte(`{"APP_FOO": "foo", "APP_BAR": "bar"}`),
 		0644)
@@ -629,38 +628,38 @@ func TestGetTemplateParams(t *testing.T) {
 }
 
 func TestGetEnvs(t *testing.T) {
-	tmp, err := ioutil.TempDir("", "mozey-config")
+	tmp, err := os.MkdirTemp("", "mozey-config")
 	require.NoError(t, err)
 	defer (func() {
 		_ = os.RemoveAll(tmp)
 	})()
 
-	err = ioutil.WriteFile(
+	err = os.WriteFile(
 		filepath.Join(tmp, "config.dev.json"),
 		[]byte(`{}`),
 		0644)
 	require.NoError(t, err)
-	err = ioutil.WriteFile(
+	err = os.WriteFile(
 		filepath.Join(tmp, "sample.config.dev.json"),
 		[]byte(`{}`),
 		0644)
 	require.NoError(t, err)
-	err = ioutil.WriteFile(
+	err = os.WriteFile(
 		filepath.Join(tmp, "config.prod.json"),
 		[]byte(`{}`),
 		0644)
 	require.NoError(t, err)
-	err = ioutil.WriteFile(
+	err = os.WriteFile(
 		filepath.Join(tmp, "sample.config.prod.json"),
 		[]byte(`{}`),
 		0644)
 	require.NoError(t, err)
-	err = ioutil.WriteFile(
+	err = os.WriteFile(
 		filepath.Join(tmp, "config.stage-ec2.json"),
 		[]byte(`{}`),
 		0644)
 	require.NoError(t, err)
-	err = ioutil.WriteFile(
+	err = os.WriteFile(
 		filepath.Join(tmp, "sample.config.stage-ec2.json"),
 		[]byte(`{}`),
 		0644)

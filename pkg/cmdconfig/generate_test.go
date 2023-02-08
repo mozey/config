@@ -2,7 +2,6 @@ package cmdconfig
 
 import (
 	"fmt"
-	"io/ioutil"
 	"os"
 	"path/filepath"
 	"strings"
@@ -45,13 +44,13 @@ func TestGenerateHelpersPrint(t *testing.T) {
 
 	for _, file := range out.Files {
 		fileName := filepath.Base(file.Path)
-		ioutil.WriteFile(
+		os.WriteFile(
 			filepath.Join("testdata", "compare", fileName),
 			file.Buf.Bytes(), 0644)
 		generated := stripGenerated(file.Buf.String())
 		// See "Test fixtures in Go"
 		// https://dave.cheney.net/2016/05/10/test-fixtures-in-go
-		b, err := ioutil.ReadFile(filepath.Join("testdata", fileName))
+		b, err := os.ReadFile(filepath.Join("testdata", fileName))
 		require.NoError(t, err)
 		ref := string(b)
 		ref = stripGenerated(ref)
@@ -76,7 +75,7 @@ func TestGenerateHelpersPrint(t *testing.T) {
 
 // TestGenerateHelpersSave also covers Files_Save
 func TestGenerateHelpersSave(t *testing.T) {
-	tmp, err := ioutil.TempDir("", "mozey-config")
+	tmp, err := os.MkdirTemp("", "mozey-config")
 	require.NoError(t, err)
 	defer (func() {
 		_ = os.RemoveAll(tmp)
@@ -120,12 +119,12 @@ func TestGenerateHelpersSave(t *testing.T) {
 		fileName := filepath.Base(file.Path)
 
 		// Read generated file from disk
-		b, err := ioutil.ReadFile(filepath.Join(tmp, in.Generate, fileName))
+		b, err := os.ReadFile(filepath.Join(tmp, in.Generate, fileName))
 		require.NoError(t, err)
 		generated := stripGenerated(string(b))
 
 		// Compare with testdata
-		b, err = ioutil.ReadFile(filepath.Join("testdata", fileName))
+		b, err = os.ReadFile(filepath.Join("testdata", fileName))
 		require.NoError(t, err)
 		ref := string(b)
 		ref = stripGenerated(ref)

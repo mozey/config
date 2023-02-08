@@ -7,7 +7,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"github.com/pkg/errors"
-	"io/ioutil"
 	"os"
 	"path/filepath"
 )
@@ -199,7 +198,7 @@ func SetEnvBase64(configBase64 string) (err error) {
 func LoadFile(mode string) (conf *Config, err error) {
 	appDir := os.Getenv("APP_DIR")
 	p := filepath.Join(appDir, fmt.Sprintf("config.%v.json", mode))
-	b, err := ioutil.ReadFile(p)
+	b, err := os.ReadFile(p)
 	if err != nil {
 		return nil, err
 	}

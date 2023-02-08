@@ -5,7 +5,6 @@ import (
 	"encoding/base64"
 	"encoding/json"
 	"fmt"
-	"io/ioutil"
 	"os"
 	"path/filepath"
 	"regexp"
@@ -264,7 +263,7 @@ func ReadConfigFile(appDir, env string) (configPath string, b []byte, err error)
 		}
 
 		// Config file exists, try to read it
-		b, err = ioutil.ReadFile(configPath)
+		b, err = os.ReadFile(configPath)
 		if err != nil {
 			log.Error().Stack().Err(err).
 				Str("config_path", configPath).Msg("")
