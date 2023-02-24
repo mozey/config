@@ -280,8 +280,8 @@ func ReadConfigFile(appDir, env string) (configPath string, b []byte, err error)
 	// log.Debug().Str("config_path", configPath).Msg("Found")
 
 	if strings.TrimSpace(string(b)) == "" {
-		return configPath, b, errors.WithStack(
-			fmt.Errorf("empty file %s", filepath.Base(configPath)))
+		return configPath, b, errors.Errorf(
+			"empty file %s", filepath.Base(configPath))
 	}
 	return configPath, b, nil
 }
@@ -392,9 +392,8 @@ func refreshConfigByEnv(
 	// Validate input
 	for i, key := range keys {
 		if !strings.HasPrefix(key, prefix) {
-			return configPath, b, errors.WithStack(
-				fmt.Errorf(
-					"key for env %s must start with prefix %s", env, prefix))
+			return configPath, b, errors.Errorf(
+				"key for env %s must start with prefix %s", env, prefix)
 		}
 
 		if del {
@@ -406,8 +405,8 @@ func refreshConfigByEnv(
 
 		} else {
 			if i > len(values)-1 {
-				return configPath, b, errors.WithStack(
-					fmt.Errorf("env %s missing value for key %s", env, key))
+				return configPath, b, errors.Errorf(
+					"env %s missing value for key %s", env, key)
 			}
 			value := values[i]
 
@@ -577,12 +576,10 @@ func generateCSV(in *CmdIn) (buf *bytes.Buffer, files []File, err error) {
 	for i, key := range config.Keys {
 		value := config.Map[key]
 		if strings.Contains(value, "\n") {
-			return buf, files, errors.WithStack(
-				fmt.Errorf("values must not contain newlines"))
+			return buf, files, errors.Errorf("values must not contain newlines")
 		}
 		if strings.Contains(value, ",") {
-			return buf, files, errors.WithStack(
-				fmt.Errorf("values must not contain commas"))
+			return buf, files, errors.Errorf("values must not contain commas")
 		}
 		a[i] = fmt.Sprintf("%v=%v", key, value)
 	}
@@ -632,6 +629,5 @@ func printValue(in *CmdIn) (buf *bytes.Buffer, files []File, err error) {
 		return buf, files, nil
 	}
 
-	return buf, files, errors.WithStack(
-		fmt.Errorf("missing value for key %v", key))
+	return buf, files, errors.Errorf("missing value for key %v", key)
 }

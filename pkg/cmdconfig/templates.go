@@ -1,8 +1,6 @@
 package cmdconfig
 
 import (
-	"fmt"
-
 	"github.com/pkg/errors"
 )
 
@@ -32,8 +30,7 @@ func GetTemplate(fileName string) (s string, err error) {
 		return templateFnGo, nil
 	}
 
-	return s, errors.WithStack(
-		fmt.Errorf("invalid file name %s", fileName))
+	return s, errors.Errorf("invalid file name %s", fileName)
 }
 
 // .............................................................................
