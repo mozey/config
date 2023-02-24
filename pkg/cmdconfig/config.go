@@ -184,8 +184,7 @@ const FileTypeYAML = ".yaml" // e.g. config.yaml
 func getConfigFilePath(appDir, env, fileType string) (string, error) {
 	if _, err := os.Stat(appDir); err != nil {
 		if os.IsNotExist(err) {
-			return "", errors.WithStack(fmt.Errorf(
-				"app dir does not exist %v", appDir))
+			return "", errors.Errorf("app dir does not exist %v", appDir)
 		} else {
 			return "", errors.WithStack(err)
 		}
