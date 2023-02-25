@@ -78,6 +78,15 @@ ${GOPATH}/bin/configu -format yaml
 
 ## Toggling env
 
+Given an `.env` file you could simply set environment variables like this
+```bash
+source .env
+```
+
+This repo includes a `conf.sh` script that makes use of the `configu` command. The script creates a function to set (and unset) environment variables.
+
+Setup the `conf` function like this:
+
 Copy the conf script to your home dir
 ```sh
 cp ./conf.sh ~/.conf.sh
