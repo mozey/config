@@ -32,7 +32,9 @@ Install from source
 or inside any folder this is a "go module", i.e. has a `go.mod` file,
 otherwise the install (or update to the latest tag) won't work
 ```sh
-go get -u github.com/mozey/config/...
+# Since Go 1.20.3 
+# "'go get' is no longer supported outside a module"
+go install github.com/mozey/config/cmd/configu@latest
 ```
 
 Create a config file
@@ -265,8 +267,10 @@ Install
 **WARNING** Do not run the command below inside a clone of this repo,
 or inside any folder this is a "go module", i.e. has a `go.mod` file,
 otherwise the install (or update to the latest tag) won't work
-```
-go get -u github.com/mozey/config/...
+```bash
+# Since Go 1.20.3 
+# "'go get' is no longer supported outside a module"
+go install github.com/mozey/config/cmd/configu@latest
 ```
 
 Depends on [clink](https://mridgers.github.io/clink) and
