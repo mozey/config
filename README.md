@@ -1,14 +1,14 @@
 # config
 
 Apps must not set or source their own config, instead 
-[read config from the env](https://12factor.net/config).
+[read config from the env](https://12factor.net/config) as per the *twelve-factor app methodology*.
 
 [Env vars](https://en.wikipedia.org/wiki/Environment_variable) 
 must be set in the parent process.
 
-Manage env vars with a flat `config.${ENV}.json` file, by default `${ENV}=dev`
+Manage env vars with a flat file. For example, `config.${ENV}.json`, or `${ENV}.env`, by default `${ENV}=dev`. Other files types are also supported.
 
-Other files types are also supported.
+Nesting is not allowed, the config file must have a flat key value structure: *"In a twelve-factor app, env vars are granular controls, each fully orthogonal to other env vars. They are never grouped together"*
 
 Load precedence for default `${ENV}=dev`
 - config.dev.json
@@ -164,7 +164,7 @@ printenv | sort | grep -E "APP_"
 ### Compare config files and print un-matched keys
 
 It's advisable for all config files to have the same keys,
-if a key does not apply to an env then set the value to an empty string.
+if a key does not apply to an env then set the value to an empty string. See [dev/prod parity](https://12factor.net/dev-prod-parity)
 ```sh
 configu -env dev -compare prod
 
@@ -342,5 +342,4 @@ Assuming the default key prefix `APP_`,
 - `APP_EXEC_TEMPLATE_`
 - `APP_FN_`
 - `APP_SET_`
-
 
