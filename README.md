@@ -2,11 +2,13 @@
 
 Manage env vars with a flat key/value file. See [architecture notes](https://github.com/mozey/config#architecture-notes) for more info.
 
-By default `${ENV} == "dev"`, and your config file may be named **config.json** or **.env**. 
+By default `${ENV} == "dev"`, and your config file may be named **.env**. 
 
-By convention the *"config file"* is added to **.gitignore**, and a *"sample config file"*, **sample.config.json** or **sample.env**, is versioned with your code.
+The convention is to add the *"config file"* to **.gitignore**, and a *"sample config file"*, **sample.env**, is versioned with your code.
 
-For *"multiple environments"* the config file naming convention is `config.${ENV}.json` or `${ENV}.env`. Other files types are also supported.
+For multiple environments, e.g. `${ENV} == "prod"`, the *"config file naming convention"* is **${ENV}.env**, that is **prod.env**. 
+
+Other files types, like JSON, are also supported. The naming convention then is to add a prefix: **config.${ENV}.json**.
 
 List of features
 - [Command](https://github.com/mozey/config#quick-start) to manage the env: `configu`
@@ -29,14 +31,14 @@ Install from source
 
 **WARNING** Do not run the command below inside a clone of this repo,
 or inside any folder this is a *"go module"*, i.e. has a **go.mod** file
-```sh
+```bash
 # Since Go 1.20.3 
 # "'go get' is no longer supported outside a module"
 go install github.com/mozey/config/cmd/configu@latest
 ```
 
 Create a config file
-```sh
+```bash
 echo '{"APP_FOO": "foo", "APP_BAR": "foo"}' > config.dev.json
 
 # This env var will be removed,
@@ -47,30 +49,30 @@ printenv | sort | grep --color -E "APP_"
 ```
 
 Print commands
-```sh
+```bash
 export APP_DIR=$(pwd)
 ${GOPATH}/bin/configu
 ```
 
 Reset env
-```sh
+```bash
 eval "$(${GOPATH}/bin/configu)"
 
 printenv | sort | grep --color -E "APP_"
 ```
 
 Set a key value pair in `config.dev.json`
-```sh
+```bash
 ${GOPATH}/bin/configu -key APP_FOO -value xxx
 ```
 
 Set a key value pair for all `config.*.json` and `sample.config.*.json` files in APP_DIR
-```sh
+```bash
 ${GOPATH}/bin/configu -all -key APP_FOO -value xxx
 ```
 
 Convert config file to a different format
-```sh
+```bash
 # dev.env
 ${GOPATH}/bin/configu -format env
 # If you require only a single config file
@@ -83,29 +85,38 @@ ${GOPATH}/bin/configu -format yaml
 
 ## Toggling env
 
-This repo includes a `conf.sh` script that makes use of the `configu` command. The script creates a function to set (and unset) environment variables.
+This repo includes a [conf.sh](https://github.com/mozey/config/blob/master/conf.sh) script that makes use of built-in Bash commands. The script creates a `conf` Bash function to set environment variables. Only **.env** files are supported
 
-Setup the `conf` function like this:
-
-Copy the conf script to your home dir
-```sh
-cp ./conf.sh ~/.conf.sh
+Download the script to your home dir
+```bash
+curl https://raw.githubusercontent.com/mozey/config/master/conf.sh --output ${HOME}/.conf.sh
 ```
 
-Source the script on [bash startup](https://www.gnu.org/software/bash/manual/html_node/Bash-Startup-Files.html),
-e.g. `~/.bashrc`, to create the conf func
-```sh
+Source the script on [bash startup](https://www.gnu.org/software/bash/manual/html_node/Bash-Startup-Files.html), e.g. `~/.bashrc`, to create the conf func
+```bash
 source ${HOME}/.conf.sh
 ```
 
 Use the func to toggle env
-```sh
+```bash
 conf
 
 conf prod
 
 # Tip: don't create a prod config file on your dev machine!
 conf stage
+```
+
+The default script for toggling env does not make use of the `configu` command. This facilitates using the workflow described in this repo on systems where the command is not installed. See [toggling env with configu](https://github.com/mozey/config#toggling-env-with-configu).
+
+
+## Toggling env with configu
+
+This repo also includes a [conf.configu.sh](https://github.com/mozey/config/blob/master/conf.configu.sh) script that makes use of the `configu` command. The script creates a `conf` Bash function to set **and unset** environment variables.
+
+Setup instruction as the same as for [toggling env](https://github.com/mozey/config#toggling-env), except that a different file must be downloaded
+```bash
+curl https://raw.githubusercontent.com/mozey/config/master/conf.configu.sh --output ${HOME}/.conf.sh
 ```
 
 
@@ -117,12 +128,12 @@ The config package can be included in your app. It is useful for
 - load config from file for testing
 
 Use the `-dry-run` flag to print the result and skip the update
-```sh
+```bash
 configu -generate pkg/config -dry-run
 ```
 
 Refresh the package after adding or removing config keys
-```sh
+```bash
 mkdir -p pkg/config
 
 configu -generate pkg/config
@@ -139,7 +150,7 @@ Use the config script to
 - create the dev config file
 - generate the config package
 
-```sh
+```bash
 APP_DIR=$(pwd) ./scripts/config.sh
 ```
 
@@ -149,14 +160,14 @@ APP_DIR=$(pwd) ./scripts/config.sh
 The `configu` cmd uses `config.dev.json` by default.
 
 Create `config.prod.json` and set a key
-```sh
+```bash
 cp ./sample.config.prod.json ./config.prod.json
 
 configu -env prod -key APP_BEER -value pilsner
 ```
 
 Export `prod` env
-```sh
+```bash
 configu -env prod
 
 eval "$(configu -env prod)"
@@ -168,7 +179,7 @@ printenv | sort | grep -E "APP_"
 
 It's advisable for all config files to have the same keys,
 if a key does not apply to an env then set the value to an empty string. See [dev/prod parity](https://12factor.net/dev-prod-parity)
-```sh
+```bash
 configu -env dev -compare prod
 
 # cmd exits with error code if the keys don't match
@@ -176,12 +187,12 @@ echo $?
 ```
 
 Compare keys in `config.dev.json` with `sample.config.dev.json`
-```sh
+```bash
 configu -env dev -compare sample.dev
 ```
 
 Set a key value in `config.prod.json`.
-```sh
+```bash
 ./configu -env prod -key APP_FOO -value xxx
 ```
 
@@ -189,14 +200,14 @@ Set a key value in `config.prod.json`.
 ## Dev setup
 
 Get the code
-```sh
+```bash
 git clone https://github.com/mozey/config.git
 
 cd config
 ```
 
 Reset to remove ignored files
-```sh
+```bash
 APP_DIR=$(pwd) ./scripts/reset.sh
 ```
 
@@ -204,14 +215,14 @@ APP_DIR=$(pwd) ./scripts/reset.sh
 All config env vars must have a prefix, the default is `APP_`
 
 Run the tests
-```sh
+```bash
 APP_DIR=$(pwd) gotest -v ./...
 ```
 
 Compare generated files in `pkg/cmdconfig/testdata` to `pkg/cmdconfig/testdata/compare`
 
 Update testdata if required (after adding new features)
-```sh
+```bash
 configu -generate pkg/config
 cp pkg/config/config.go pkg/cmdconfig/testdata/config.go
 cp sample.config.dev.json pkg/cmdconfig/testdata/config.dev.json
@@ -221,19 +232,19 @@ cp sample.config.dev.json pkg/cmdconfig/testdata/config.dev.json
 ## Debug
 
 Create `config.dev.json`
-```sh
+```bash
 cp ./sample.config.dev.json ./config.dev.json
 ```
 
 Run the `configu` cmd.
 By default, echo `config.dev.json`,
 formatted as commands to export env vars
-```sh
+```bash
 APP_DIR=$(pwd) go run cmd/configu/main.go
 ```
 
 Build from source
-```sh
+```bash
 go build -o ${GOPATH}/bin/configu ./cmd/configu
 ```
 
@@ -247,14 +258,14 @@ see comments in the `config.Main` func
 
 Build the `configu` command.
 The APP_DIR env var is required
-```sh
+```bash
 export APP_DIR=$(pwd)
 
 go build -o ${APP_DIR}/configu ./cmd/configu
 ```
 
 Then use the local command
-```sh
+```bash
 ./configu
 ```
 
