@@ -244,8 +244,10 @@ Run the `configu` cmd. By default it reads `config.dev.json`, and prints the key
 APP_DIR=$(pwd) go run cmd/configu/main.go
 ```
 
-Build from source
+Build from source in working copy
 ```bash
+go build -o ./configu ./cmd/configu
+# WARNING Override installed binary
 go build -o ${GOPATH}/bin/configu ./cmd/configu
 ```
 
@@ -346,7 +348,7 @@ Nested config is not supported, the config file must have a flat key value struc
 [Env vars](https://en.wikipedia.org/wiki/Environment_variable) 
 must be set in the parent process. **Apps must not set their own config, they read it from the environment.**. An exception to this rule is [base64 config](https://github.com/mozey/config/issues/28) that is compiled into, and distributed with binaries.
 
-Above is in contrast to using [Viper](https://github.com/spf13/viper) for [reading config files from your application](https://github.com/spf13/viper#reading-config-files). In addition, while [Viper has the ability to bind to flags](https://github.com/spf13/viper#working-with-flags), this repo encourages using the [standard flag package](https://pkg.go.dev/flag). Or if you prefer, Viper can be used in combination with this repo. In short, Viper is very flexible, while this repo is more opinionated.
+Above is in contrast to using [Viper](https://github.com/spf13/viper) for [reading config files from your application](https://github.com/spf13/viper#reading-config-files). In addition, while [Viper has the ability to bind to flags](https://github.com/spf13/viper#working-with-flags), this repo encourages using the [standard flag package](https://pkg.go.dev/flag) or [spf13/cobra](https://github.com/spf13/cobra). If you really need it, Viper can be used for managing config in combination with this repo. In short, Viper is very flexible, while this repo is more opinionated.
 
 [Notes re. twelve factor apps](https://github.com/mozey/config/issues/5)
 
