@@ -1,16 +1,17 @@
 # config
 
-Apps must not set or source their own config, instead 
-[read config from the env](https://12factor.net/config) as per the *twelve-factor app methodology*.
+Manage env vars with a flat key/value file. See [architecture notes](https://github.com/mozey/config#architecture-notes) for more info.
 
-[Env vars](https://en.wikipedia.org/wiki/Environment_variable) 
-must be set in the parent process.
+By default `${ENV} == "dev"`, and your config file may be named `config.json` or `.env`. By convention this file is added to `.gitignore`, and a `sample.config.json` or `sample.env` is versioned with your code.
 
-Manage env vars with a flat file. For example, `config.${ENV}.json`, or `${ENV}.env`, by default `${ENV}=dev`. Other files types are also supported.
+For multiple environments the config file naming convention is `config.${ENV}.json` or `${ENV}.env`. Other files types are also supported.
 
-Nesting is not allowed, the config file must have a flat key value structure: *"In a twelve-factor app, env vars are granular controls, each fully orthogonal to other env vars. They are never grouped together"*
+`mozey/config` has the following features
+- Command to manage the env: `configu`
+- [Bash](https://www.gnu.org/software/bash/) function to toggle env: `conf`
+- Generate code (e.g. `pkg/config/config.go`) to include in your [Go module](https://go.dev/blog/using-go-modules)
 
-Load precedence for default `${ENV}=dev`
+File loading precedence for `configu` command (default `${ENV} == "dev"`)
 - config.dev.json
 - config.json
 - dev.env
@@ -18,19 +19,13 @@ Load precedence for default `${ENV}=dev`
 - config.dev.yaml
 - config.yaml
 
-`mozey/config` has the following components
-- Command to manage the env: `configu`
-- Bash function to toggle env: `conf`
-- Generate a package (e.g. `pkg/config/config.go`) to include in your module
-
 
 ## Quick start
 
 Install from source
 
 **WARNING** Do not run the command below inside a clone of this repo,
-or inside any folder this is a "go module", i.e. has a `go.mod` file,
-otherwise the install (or update to the latest tag) won't work
+or inside any folder this is a *"go module"*, i.e. has a `go.mod` file
 ```sh
 # Since Go 1.20.3 
 # "'go get' is no longer supported outside a module"
@@ -45,7 +40,7 @@ echo '{"APP_FOO": "foo", "APP_BAR": "foo"}' > config.dev.json
 # it is not listed in the config file
 export APP_VAR_NOT_IN_CONFIG_FILE="not_for_this_app"
 
-printenv | grep APP_
+printenv | sort | grep --color -E "APP_"
 ```
 
 Print commands
@@ -57,23 +52,28 @@ ${GOPATH}/bin/configu
 Reset env
 ```sh
 eval "$(${GOPATH}/bin/configu)"
+
+printenv | sort | grep --color -E "APP_"
 ```
 
-printenv | grep APP_
-
-Set a key value in `config.dev.json`
+Set a key value pair in `config.dev.json`
 ```sh
 ${GOPATH}/bin/configu -key APP_FOO -value xxx
 ```
 
-Set a key value for all `config.*.json` 
-and `sample.config.*.json` files in APP_DIR
+Set a key value pair for all `config.*.json` and `sample.config.*.json` files in APP_DIR
 ```sh
 ${GOPATH}/bin/configu -all -key APP_FOO -value xxx
 ```
 
-Convert config file to different format
+Convert config file to a different format
 ```sh
+# dev.env
+${GOPATH}/bin/configu -format env
+# If you require only a single config file
+mv dev.env .env
+
+# config.dev.yaml
 ${GOPATH}/bin/configu -format yaml
 ```
 
@@ -318,12 +318,15 @@ gotest -v ./...
 
 ## Architecture notes
 
-Does it make sense to build this on top of, 
-or use [Viper](https://github.com/spf13/viper) instead.
-How would the config package be generated?
+*The twelve-factor app stores config in environment variables*, i.e. 
+[read config from the environment](https://12factor.net/config).
 
-Keep in mind that env must be set in the parent process,
-i.e. **apps should not set their own config, they must read it from the env.**
+[Env vars](https://en.wikipedia.org/wiki/Environment_variable) 
+must be set in the parent process. **Apps must not set their own config, they read it from the environment.**. An exception to this rule is [base64 config](https://github.com/mozey/config/issues/28) that is compiled into, and distributed with binaries.
+
+Nested config is not supported, the config file must have a flat key value structure: *"env vars are granular controls, each fully orthogonal to other env vars. They are never grouped together"*. See [compare config files and print un-matched keys](https://github.com/mozey/config#compare-config-files-and-print-un-matched-keys)
+
+Above is in contrast to using [Viper](https://github.com/spf13/viper) for [reading config files from your application](https://github.com/spf13/viper#reading-config-files). In addition, while [Viper has the ability to bind to flags](https://github.com/spf13/viper#working-with-flags), this repo encourages using the [standard flag package](https://pkg.go.dev/flag). Or if you prefer, Viper can be used in combination with this repo. In short, Viper is very flexible, while this repo is more opinionated.
 
 [Notes re. twelve factor apps](https://github.com/mozey/config/issues/5)
 
@@ -332,14 +335,16 @@ i.e. **apps should not set their own config, they must read it from the env.**
 
 All keys must start with the **same prefix**.
 
-Keys are case sensitive,
-and it's advised to make keys **all uppercase**.
+Keys are case sensitive, and it's advised to make keys **all uppercase**.
 
 Use (uppercase) **SNAKE_CASE**.
 
-Assuming the default key prefix `APP_`,
-**avoid keys that start with**
+Assuming the default key prefix `APP_`, to avoid un-defined behaviour when generating package code, **do not start keys with**
 - `APP_EXEC_TEMPLATE_`
 - `APP_FN_`
 - `APP_SET_`
+See [error on reserved prefix when generating package code](https://github.com/mozey/config/issues/37)
 
+In addition to the `APP_` prefix, the configu command also supports additional prefixes like `AWS_`.
+
+The `APP_DIR` key is set to the working directory when toggling env, any value specified for this key in the config file will be overridden
