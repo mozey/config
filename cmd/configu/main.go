@@ -9,6 +9,6 @@ func main() {
 	logutil.SetupLogger(true)
 
 	// For custom flags and commands,
-	// see comments in config.Main...
+	// see comments in pkg/cmdconfig/main.go
 	cmdconfig.Main()
 }

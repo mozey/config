@@ -16,6 +16,9 @@ List of features
 - [Generate code](https://github.com/mozey/config#generate-config-package) (e.g. `pkg/config/config.go`) to include in your [Go module](https://go.dev/blog/using-go-modules)
 - And more...
 
+
+## File loading precedence
+
 File loading precedence for `configu` command (default `${ENV} == "dev"`)
 - config.dev.json
 - config.json
@@ -246,23 +249,27 @@ Build from source
 go build -o ${GOPATH}/bin/configu ./cmd/configu
 ```
 
+Debug scripts to toggle env like this
+```bash
+source conf.sh && conf
+source conf.configu.sh && conf
+```
+
 
 ## Advanced Usage
 
-Duplicate `cmd/configu/main.go` in your module.
+The `configu` command can be customized
+- Copy [cmd/configu/main.go](https://github.com/mozey/config/blob/conf/cmd/configu/main.go) to your module
+- Copy the code for the [Main func](https://github.com/mozey/config/blob/conf/pkg/cmdconfig/main.go), and make changes as per the comments
 
-The `configu` command can be customized,
-see comments in the `config.Main` func
-
-Build the `configu` command.
-The APP_DIR env var is required
+Build the `configu` command. The APP_DIR env var is required
 ```bash
 export APP_DIR=$(pwd)
 
 go build -o ${APP_DIR}/configu ./cmd/configu
 ```
 
-Then use the local command
+Run your custom commands...
 ```bash
 ./configu
 ```
