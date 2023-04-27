@@ -256,13 +256,13 @@ source conf.configu.sh && conf
 ```
 
 
-## Advanced Usage
+## Advanced usage
 
 The `configu` command can be customized
 - Copy [cmd/configu/main.go](https://github.com/mozey/config/blob/conf/cmd/configu/main.go) to your module
 - Copy the code for the [Main func](https://github.com/mozey/config/blob/conf/pkg/cmdconfig/main.go), and make changes as per the comments
 
-Build the `configu` command. The APP_DIR env var is required
+Build the `configu` command. The **APP_DIR** env var is required
 ```bash
 export APP_DIR=$(pwd)
 

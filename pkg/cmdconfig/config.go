@@ -66,6 +66,26 @@ type CmdIn struct {
 	Format string
 }
 
+// Valid returns true if the command input is valid.
+// It may also set default values
+func (in *CmdIn) Valid() error {
+	// AppDir is required
+	appDirKey := fmt.Sprintf("%sDIR", in.Prefix)
+	appDir := os.Getenv(appDirKey)
+	if appDir == "" {
+		return errors.Errorf("%v env not set%s", appDirKey, "\n")
+	}
+	in.AppDir = appDir
+
+	// Prefix must end with underscore
+	prefix := in.Prefix
+	if prefix[len(prefix)-1:] != "_" {
+		in.Prefix = fmt.Sprintf("%s_", prefix)
+	}
+
+	return nil
+}
+
 // .............................................................................
 
 type File struct {
