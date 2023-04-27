@@ -6,6 +6,7 @@ import (
 )
 
 const (
+	CmdVersion      = "version"
 	CmdBase64       = "base64"
 	CmdCompare      = "compare"
 	CmdCSV          = "csv"
@@ -22,7 +23,13 @@ func Cmd(in *CmdIn) (out *CmdOut, err error) {
 	// Explicit empty value by default
 	out.ExitCode = 0
 
-	if in.CSV {
+	if in.PrintVersion {
+		out.Cmd = CmdVersion
+		out.Buf = bytes.NewBufferString(in.version)
+		out.Files = Files{}
+		return out, nil
+
+	} else if in.CSV {
 		// Generate CSV from env
 		buf, files, err := generateCSV(in)
 		if err != nil {
@@ -108,6 +115,11 @@ func Cmd(in *CmdIn) (out *CmdOut, err error) {
 // depending on the whether the in.DryRun flag was set
 func (in *CmdIn) Process(out *CmdOut) (exitCode int, err error) {
 	switch out.Cmd {
+	case CmdVersion:
+		// .....................................................................
+		// Print version
+		fmt.Println(out.Buf.String())
+
 	case CmdSetEnv:
 		// .....................................................................
 		// Print set and unset env commands

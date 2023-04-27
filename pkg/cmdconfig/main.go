@@ -33,15 +33,18 @@ const (
 	FlagPrefix   = "prefix"
 	FlagSep      = "sep"
 	FlagValue    = "value"
+	FlagVersion  = "version"
 	FlagOS       = "os"
 	FlagFormat   = "format"
 )
 
 // ParseFlags before calling Cmd
-func ParseFlags() *CmdIn {
-	in := CmdIn{}
+func ParseFlags(version string) *CmdIn {
+	in := NewCmdIn(CmdInParams{Version: version})
 
 	// Flags
+	flag.BoolVar(&in.PrintVersion,
+		FlagVersion, false, "Print build version")
 	flag.StringVar(&in.Prefix,
 		FlagPrefix, "APP_", "Config key prefix")
 	flag.StringVar(&in.Env,
@@ -82,16 +85,16 @@ func ParseFlags() *CmdIn {
 
 	flag.Parse()
 
-	return &in
+	return in
 }
 
 // Main function for cmd/configu.
 // The configu command can be customized by copying the code below.
 // Try not to change the default behaviour, e.g.
 // custom flags must only add functionality
-func Main() {
+func Main(version string) {
 	// Parse and validate flags
-	in := ParseFlags()
+	in := ParseFlags(version)
 	err := in.Valid()
 	if err != nil {
 		log.Error().Stack().Err(err).Msg("")

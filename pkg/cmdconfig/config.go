@@ -34,10 +34,14 @@ type conf struct {
 
 // CmdIn for use with command functions
 type CmdIn struct {
+	// version is the build version
+	version string
 	// AppDir is the application root
 	AppDir string
 	// Prefix for env vars
 	Prefix string
+	// PrintVersion for printing the build version
+	PrintVersion bool
 	// Env selects the config file
 	Env string
 	// All makes the cmd apply to all config files in APP_DIR, including samples
@@ -64,6 +68,18 @@ type CmdIn struct {
 	OS string
 	// Override config file format
 	Format string
+}
+
+type CmdInParams struct {
+	// Version to print with the version flag
+	Version string
+}
+
+// NewCmdIn constructor for CmdIn
+func NewCmdIn(params CmdInParams) *CmdIn {
+	return &CmdIn{
+		version: params.Version,
+	}
 }
 
 // Valid returns true if the command input is valid.
