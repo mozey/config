@@ -2,7 +2,6 @@ package cmdconfig
 
 import (
 	"flag"
-	"fmt"
 	"os"
 	"strings"
 
@@ -86,32 +85,20 @@ func ParseFlags() *CmdIn {
 	return &in
 }
 
-// Main can be executed by default.
-// For custom flags and CMDs copy the code below.
-// Try not to change the behaviour of default CMDs,
-// e.g. custom flags must only add functionality
+// Main function for cmd/configu.
+// The configu command can be customized by copying the code below.
+// Try not to change the default behaviour, e.g.
+// custom flags must only add functionality
 func Main() {
-	// Define custom flags here...
-
-	// Parse flags
+	// Parse and validate flags
 	in := ParseFlags()
-	prefix := in.Prefix
-	if prefix[len(prefix)-1:] != "_" {
-		// Prefix must end with underscore
-		in.Prefix = fmt.Sprintf("%s_", prefix)
-	}
-
-	// appDir is required
-	appDirKey := fmt.Sprintf("%sDIR", in.Prefix)
-	appDir := os.Getenv(appDirKey)
-	if appDir == "" {
-		err := fmt.Errorf("%v env not set%s", appDirKey, "\n")
+	err := in.Valid()
+	if err != nil {
 		log.Error().Stack().Err(err).Msg("")
 		os.Exit(1)
 	}
-	in.AppDir = appDir
 
-	// Run custom commands here...
+	// Insert your custom code here...
 
 	// Run cmd
 	out, err := Cmd(in)
