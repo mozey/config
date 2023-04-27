@@ -1,15 +1,18 @@
-# config
+# [mozey/config](https://github.com/mozey/config)
 
 Manage env vars with a flat key/value file. See [architecture notes](https://github.com/mozey/config#architecture-notes) for more info.
 
-By default `${ENV} == "dev"`, and your config file may be named `config.json` or `.env`. By convention this file is added to `.gitignore`, and a `sample.config.json` or `sample.env` is versioned with your code.
+By default `${ENV} == "dev"`, and your config file may be named **config.json** or **.env**. 
 
-For multiple environments the config file naming convention is `config.${ENV}.json` or `${ENV}.env`. Other files types are also supported.
+By convention the *"config file"* is added to **.gitignore**, and a *"sample config file"*, **sample.config.json** or **sample.env**, is versioned with your code.
 
-`mozey/config` has the following features
-- Command to manage the env: `configu`
-- [Bash](https://www.gnu.org/software/bash/) function to toggle env: `conf`
-- Generate code (e.g. `pkg/config/config.go`) to include in your [Go module](https://go.dev/blog/using-go-modules)
+For *"multiple environments"* the config file naming convention is `config.${ENV}.json` or `${ENV}.env`. Other files types are also supported.
+
+List of features
+- [Command](https://github.com/mozey/config#quick-start) to manage the env: `configu`
+- [Bash](https://www.gnu.org/software/bash/) function to [toggle env](https://github.com/mozey/config#toggling-env): `conf`
+- [Generate code](https://github.com/mozey/config#generate-config-package) (e.g. `pkg/config/config.go`) to include in your [Go module](https://go.dev/blog/using-go-modules)
+- And more...
 
 File loading precedence for `configu` command (default `${ENV} == "dev"`)
 - config.dev.json
@@ -25,7 +28,7 @@ File loading precedence for `configu` command (default `${ENV} == "dev"`)
 Install from source
 
 **WARNING** Do not run the command below inside a clone of this repo,
-or inside any folder this is a *"go module"*, i.e. has a `go.mod` file
+or inside any folder this is a *"go module"*, i.e. has a **go.mod** file
 ```sh
 # Since Go 1.20.3 
 # "'go get' is no longer supported outside a module"
