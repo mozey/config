@@ -177,8 +177,9 @@ printenv | sort | grep -E "APP_"
 
 ### Compare config files and print un-matched keys
 
-It's advisable for all config files to have the same keys,
-if a key does not apply to an env then set the value to an empty string. See [dev/prod parity](https://12factor.net/dev-prod-parity)
+It's advisable for all config files to have the same keys, if a key does not apply to an env then set the value to an empty string. See [architecture notes](https://github.com/mozey/config#architecture-notes).
+
+Comparing keys
 ```bash
 configu -env dev -compare prod
 
@@ -211,8 +212,7 @@ Reset to remove ignored files
 APP_DIR=$(pwd) ./scripts/reset.sh
 ```
 
-`APP_DIR` must be always be set to the module root.
-All config env vars must have a prefix, the default is `APP_`
+`APP_DIR` must be always be set to the module root. All config env vars must have a prefix, the default is `APP_`
 
 Run the tests
 ```bash
@@ -236,9 +236,7 @@ Create `config.dev.json`
 cp ./sample.config.dev.json ./config.dev.json
 ```
 
-Run the `configu` cmd.
-By default, echo `config.dev.json`,
-formatted as commands to export env vars
+Run the `configu` cmd. By default it reads `config.dev.json`, and prints the key/value pairs formatted as commands to export env vars
 ```bash
 APP_DIR=$(pwd) go run cmd/configu/main.go
 ```
@@ -269,9 +267,10 @@ Then use the local command
 ./configu
 ```
 
+
 ## Windows
 
-Install
+Installation work the same thanks to Go.
 
 **WARNING** Do not run the command below inside a clone of this repo,
 or inside any folder this is a "go module", i.e. has a `go.mod` file,
@@ -282,49 +281,47 @@ otherwise the install (or update to the latest tag) won't work
 go install github.com/mozey/config/cmd/configu@latest
 ```
 
-Depends on [clink](https://mridgers.github.io/clink) and
-[gow](https://github.com/bmatzelle/gow/wiki), install them first.
-Then the following commands can be executed in `cmd.exe`
+Depends on [clink](https://mridgers.github.io/clink) and [gow](https://github.com/bmatzelle/gow/wiki), install them first. Then the following commands can be executed in the command prompt `cmd.exe`
 
 Create a config file
-```
+```bat
 echo {"APP_FOO": "foo", "APP_BAR": "foo"} > config.dev.json
 
-# This env var will be removed,
-# it is not listed in the config file
+REM This env var will be removed,
+REM it is not listed in the config file
 set APP_VAR_NOT_IN_CONFIG_FILE="not_for_this_app"
 
 printenv | grep APP_
 ```
 
 Print commands
-```
+```bat
 set APP_DIR=%cd%
 %GOPATH%/bin/configu
 ```
 
 Reset env
-```
+```bat
 eval "$(${GOPATH}/bin/configu)"
 
 printenv | grep APP_
 ```
 
-Set a key value in `config.dev.json`
-```
+Set a key value pair in **config.dev.json**
+```bat
 %GOPATH%/bin/configu -key APP_FOO -value xxx
 ```
 
 Toggle config, first update PATH to make `conf.bat` available
-```
-Right click start > System > Advanced system settings > Advanced > Environment Variables...
-%GOPATH%/src/github.com/mozey/config
+```bat
+REM Right click start - System - Advanced system settings - Advanced - Environment Variables...
+REM %GOPATH%/src/github.com/mozey/config
 
 conf.bat
 ```
 
 Run the tests
-```
+```bat
 set APP_DIR=%cd%
 gotest -v ./...
 ```
@@ -335,10 +332,12 @@ gotest -v ./...
 *The twelve-factor app stores config in environment variables*, i.e. 
 [read config from the environment](https://12factor.net/config).
 
+Nested config is not supported, the config file must have a flat key value structure: *"env vars are granular controls, each fully orthogonal to other env vars. They are never grouped together..."*. 
+
+*"Keep development, staging, and production as similar as possible"*, see [dev/prod parity](https://12factor.net/dev-prod-parity). See [compare config files and print un-matched keys](https://github.com/mozey/config#compare-config-files-and-print-un-matched-keys)
+
 [Env vars](https://en.wikipedia.org/wiki/Environment_variable) 
 must be set in the parent process. **Apps must not set their own config, they read it from the environment.**. An exception to this rule is [base64 config](https://github.com/mozey/config/issues/28) that is compiled into, and distributed with binaries.
-
-Nested config is not supported, the config file must have a flat key value structure: *"env vars are granular controls, each fully orthogonal to other env vars. They are never grouped together"*. See [compare config files and print un-matched keys](https://github.com/mozey/config#compare-config-files-and-print-un-matched-keys)
 
 Above is in contrast to using [Viper](https://github.com/spf13/viper) for [reading config files from your application](https://github.com/spf13/viper#reading-config-files). In addition, while [Viper has the ability to bind to flags](https://github.com/spf13/viper#working-with-flags), this repo encourages using the [standard flag package](https://pkg.go.dev/flag). Or if you prefer, Viper can be used in combination with this repo. In short, Viper is very flexible, while this repo is more opinionated.
 
