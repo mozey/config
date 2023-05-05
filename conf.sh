@@ -7,7 +7,7 @@
 # https://github.com/mozey/config#toggling-env
 conf() {
     # APP_DIR is the full path to the application basedir.
-	# The config file must exist under this path,
+    # The config file must exist under this path,
     # and project files can be referenced relative to APP_DIR
     APP_DIR=$(pwd)
     export APP_DIR
@@ -22,45 +22,43 @@ conf() {
     fi
 
     # File loading precedence, see
-	# https://github.com/mozey/config#file-loading-precedence
-	FILE=""
-	if [[ ${ENV} == "dev" ]]; then
-		# Prefix is optional for ENV == "dev"
-		if [ -f "${APP_DIR}/.env" ]; then
-			FILE="${APP_DIR}/.env"
-		fi
-	fi
-	if [ -f "${APP_DIR}/${ENV}.env" ]; then
-		FILE="${APP_DIR}/${ENV}.env"
-	fi
+    # https://github.com/mozey/config#file-loading-precedence
+    FILE=""
+    if [[ ${ENV} == "dev" ]]; then
+        # Prefix is optional for ENV == "dev"
+        if [ -f "${APP_DIR}/.env" ]; then
+            FILE="${APP_DIR}/.env"
+        fi
+    fi
+    if [ -f "${APP_DIR}/${ENV}.env" ]; then
+        FILE="${APP_DIR}/${ENV}.env"
+    fi
 
-	if [ ! -f "${FILE}" ]
-	then
-		echo "config file not found for env ${ENV}"
-		return 1
-	fi
-	echo "Setting env for ${ENV} from ${FILE}"
+    if [ ! -f "${FILE}" ]; then
+        echo "config file not found for env ${ENV}"
+        return 1
+    fi
+    echo "Setting env for ${ENV} from ${FILE}"
 
-	# Set environment variables from file
-	# https://stackoverflow.com/a/20909045/639133
-	UNAME_STR=$(uname)
-	if [ "$UNAME_STR" = 'Linux' ]; then
-		export "$(grep -v '^#' "${FILE}" | xargs -d '\n')"
-	elif [ "$UNAME_STR" = 'FreeBSD' ] || [ "$UNAME_STR" = 'Darwin' ]; then
-		export "$(grep -v '^#' "${FILE}" | xargs -0)"
-	else
-		echo "unexpected uname ${UNAME_STR}"
-		return 1
-	fi
+    # Set environment variables from file
+    # https://stackoverflow.com/a/20909045/639133
+    UNAME_STR=$(uname)
+    if [ "$UNAME_STR" = 'Linux' ]; then
+        export "$(grep -v '^#' "${FILE}" | xargs -d '\n')"
+    elif [ "$UNAME_STR" = 'FreeBSD' ] || [ "$UNAME_STR" = 'Darwin' ]; then
+        export "$(grep -v '^#' "${FILE}" | xargs -0)"
+    else
+        echo "unexpected uname ${UNAME_STR}"
+        return 1
+    fi
 
-    # NOTE Unlike conf.configu.sh, this script does not 
+    # NOTE Unlike conf.configu.sh, this script does not
     # unset env vars subsequently removed from the config file.
-    # To refresh your env start a new terminal session, 
-	# or use the configu command
-	# https://github.com/mozey/config#toggling-env-with-configu
+    # To refresh your env start a new terminal session,
+    # or use the configu command
+    # https://github.com/mozey/config#toggling-env-with-configu
 
-	# Print application env
-	printenv | sort | grep --color -E "APP_|AWS_"
-	return 0
+    # Print application env
+    printenv | sort | grep --color -E "APP_|AWS_"
+    return 0
 }
-

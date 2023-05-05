@@ -12,7 +12,7 @@ conf() {
     fi
 
     # APP_DIR is the full path to the application basedir.
-	# The config file must exist under this path,
+    # The config file must exist under this path,
     # and project files can be referenced relative to APP_DIR
     APP_DIR=$(pwd)
     export APP_DIR
