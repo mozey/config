@@ -1,15 +1,12 @@
-# github.com/davecgh/go-spew v1.1.0
-## explicit
-github.com/davecgh/go-spew/spew
+# github.com/matryer/is v1.4.1
+## explicit; go 1.14
+github.com/matryer/is
 # github.com/mozey/logutil v0.0.0-20201020133158-b1ec1d809337
 ## explicit
 github.com/mozey/logutil
 # github.com/pkg/errors v0.9.1
 ## explicit
 github.com/pkg/errors
-# github.com/pmezard/go-difflib v1.0.0
-## explicit
-github.com/pmezard/go-difflib/difflib
 # github.com/rs/zerolog v1.20.0
 ## explicit
 github.com/rs/zerolog
@@ -18,8 +15,6 @@ github.com/rs/zerolog/internal/json
 github.com/rs/zerolog/log
 # github.com/stretchr/testify v1.5.1
 ## explicit; go 1.13
-github.com/stretchr/testify/assert
-github.com/stretchr/testify/require
 # gopkg.in/yaml.v2 v2.2.2
 ## explicit
 gopkg.in/yaml.v2

@@ -217,6 +217,9 @@ APP_DIR=$(pwd) ./scripts/reset.sh
 
 `APP_DIR` must be always be set to the module root. All config env vars must have a prefix, the default is `APP_`
 
+
+## Testing
+
 Run the tests
 ```bash
 APP_DIR=$(pwd) gotest -v ./...
