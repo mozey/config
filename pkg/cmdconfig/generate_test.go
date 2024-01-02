@@ -1,14 +1,14 @@
 package cmdconfig
 
 import (
-	"fmt"
 	"os"
 	"path/filepath"
 	"strings"
 	"testing"
 
 	config "github.com/mozey/config/pkg/cmdconfig/testdata"
-	"github.com/stretchr/testify/require"
+	"github.com/mozey/config/pkg/testutil"
+	"github.com/pkg/errors"
 )
 
 func stripGenerated(generated string) string {
@@ -19,10 +19,11 @@ func stripGenerated(generated string) string {
 }
 
 func TestGenerateHelpersPrint(t *testing.T) {
+	is := testutil.Setup(t)
 	var err error
 
 	appDir := os.Getenv("APP_DIR")
-	require.NotEmpty(t, appDir, "APP_DIR must not be empty")
+	is.True(appDir != "") // APP_DIR must not be empty
 
 	in := &CmdIn{}
 	in.DryRun = true // Do not write files to disk
@@ -36,11 +37,10 @@ func TestGenerateHelpersPrint(t *testing.T) {
 	in.AppDir = filepath.Join(appDir, in.Generate)
 
 	out, err := Cmd(in)
-	require.NoError(t, err)
-	require.Equal(t, CmdGenerate, out.Cmd)
-	require.Equal(t, 0, out.ExitCode)
-	require.Equal(t, 3, len(out.Files),
-		"Unexpected number of files")
+	is.NoErr(err)
+	is.Equal(CmdGenerate, out.Cmd)
+	is.Equal(0, out.ExitCode)
+	is.Equal(3, len(out.Files)) // Unexpected number of files
 
 	for _, file := range out.Files {
 		fileName := filepath.Base(file.Path)
@@ -51,32 +51,35 @@ func TestGenerateHelpersPrint(t *testing.T) {
 		// See "Test fixtures in Go"
 		// https://dave.cheney.net/2016/05/10/test-fixtures-in-go
 		b, err := os.ReadFile(filepath.Join("testdata", fileName))
-		require.NoError(t, err)
+		is.NoErr(err)
 		ref := string(b)
 		ref = stripGenerated(ref)
-		require.Equal(t, ref, generated,
-			fmt.Sprintf(
+		if ref != generated {
+			is.NoErr(errors.Errorf(
 				"generated should match pkg/cmdconfig/testdata/%s", fileName))
+		}
 	}
 
 	// We've checked the generated code match the files in pkg/cmdconfig/testdata,
 	// now check the generated code works as expected...
 	err = os.Setenv("APP_DIR", filepath.Join(appDir, in.Generate))
-	require.NoError(t, err)
+	is.NoErr(err)
 	c, err := config.LoadFile("dev")
-	require.NoError(t, err)
+	is.NoErr(err)
 	err = os.Setenv("APP_DIR", appDir)
-	require.NoError(t, err)
-	require.Equal(t, "foo", c.Foo())
-	require.Equal(t, "bar", c.Bar())
-	require.Equal(t, "Buzz", c.Buz())
-	require.Equal(t, "FizzBuzz-FizzBuzz", c.ExecTemplateFiz("-FizzBuzz"))
+	is.NoErr(err)
+	is.Equal("foo", c.Foo())
+	is.Equal("bar", c.Bar())
+	is.Equal("Buzz", c.Buz())
+	is.Equal("FizzBuzz-FizzBuzz", c.ExecTemplateFiz("-FizzBuzz"))
 }
 
 // TestGenerateHelpersSave also covers Files_Save
 func TestGenerateHelpersSave(t *testing.T) {
+	is := testutil.Setup(t)
+
 	tmp, err := os.MkdirTemp("", "mozey-config")
-	require.NoError(t, err)
+	is.NoErr(err)
 	defer (func() {
 		_ = os.RemoveAll(tmp)
 	})()
@@ -94,42 +97,42 @@ func TestGenerateHelpersSave(t *testing.T) {
 	// See "Test fixtures in Go"
 	// https://dave.cheney.net/2016/05/10/test-fixtures-in-go
 	configFilePath, err := getConfigFilePath("testdata", in.Env, FileTypeJSON)
-	require.NoError(t, err)
+	is.NoErr(err)
 	dstConfigFilePath, err := getConfigFilePath(tmp, in.Env, FileTypeJSON)
-	require.NoError(t, err)
+	is.NoErr(err)
 	err = Copy(configFilePath, dstConfigFilePath)
-	require.NoError(t, err)
+	is.NoErr(err)
 
 	out, err := Cmd(in)
-	require.NoError(t, err)
-	require.Equal(t, CmdGenerate, out.Cmd)
-	require.Equal(t, 0, out.ExitCode)
-	require.Equal(t, 3, len(out.Files),
-		"Unexpected number of files")
+	is.NoErr(err)
+	is.Equal(CmdGenerate, out.Cmd)
+	is.Equal(0, out.ExitCode)
+	is.Equal(3, len(out.Files)) // Unexpected number of files
 
 	// Write the files
 	// TODO in.Process calls fmt.Println,
 	// temporarily capture stdout to avoid cluttering test output?
 	// See https://github.com/mozey/go-capturer
 	exitCode, err := in.Process(out)
-	require.NoError(t, err)
-	require.Equal(t, 0, exitCode)
+	is.NoErr(err)
+	is.Equal(0, exitCode)
 
 	for _, file := range out.Files {
 		fileName := filepath.Base(file.Path)
 
 		// Read generated file from disk
 		b, err := os.ReadFile(filepath.Join(tmp, in.Generate, fileName))
-		require.NoError(t, err)
+		is.NoErr(err)
 		generated := stripGenerated(string(b))
 
 		// Compare with testdata
 		b, err = os.ReadFile(filepath.Join("testdata", fileName))
-		require.NoError(t, err)
+		is.NoErr(err)
 		ref := string(b)
 		ref = stripGenerated(ref)
-		require.Equal(t, ref, generated,
-			fmt.Sprintf(
+		if ref != generated {
+			is.NoErr(errors.Errorf(
 				"generated should match pkg/cmdconfig/testdata/%s", fileName))
+		}
 	}
 }

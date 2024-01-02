@@ -19,6 +19,7 @@ import (
 	// imported to test the generated code works as expected
 	config "github.com/mozey/config/pkg/cmdconfig/testdata"
 	"github.com/mozey/config/pkg/testutil"
+	"github.com/pkg/errors"
 	"github.com/rs/zerolog/log"
 )
 
@@ -319,7 +320,7 @@ func TestUpdateConfigMulti(t *testing.T) {
 	err = json.Unmarshal(file.Buf.Bytes(), &m)
 	is.NoErr(err)
 	if test1 != m["APP_FOO"] {
-		is.NoErr(fmt.Errorf("mismatch for path %s", file.Path))
+		is.NoErr(errors.Errorf("mismatch for path %s", file.Path))
 	}
 
 	// .........................................................................
@@ -343,7 +344,7 @@ func TestUpdateConfigMulti(t *testing.T) {
 			strings.Contains(file.Path, "config.stage-ec2.json") ||
 			strings.Contains(file.Path, "config.prod.json") {
 			if test2 != m["APP_FOO"] {
-				is.NoErr(fmt.Errorf("mismatch for path %s", file.Path))
+				is.NoErr(errors.Errorf("mismatch for path %s", file.Path))
 			}
 		} else {
 			t.Errorf("unexpected path %s", file.Path)
@@ -371,7 +372,7 @@ func TestUpdateConfigMulti(t *testing.T) {
 			strings.Contains(file.Path, "sample.config.stage-ec2.json") ||
 			strings.Contains(file.Path, "sample.config.prod.json") {
 			if test3 != m["APP_FOO"] {
-				is.NoErr(fmt.Errorf("mismatch for path %s", file.Path))
+				is.NoErr(errors.Errorf("mismatch for path %s", file.Path))
 			}
 		} else {
 			t.Errorf("unexpected path %s", file.Path)
@@ -400,7 +401,7 @@ func TestUpdateConfigMulti(t *testing.T) {
 		err = json.Unmarshal(file.Buf.Bytes(), &m)
 		is.NoErr(err)
 		if test4 != m["APP_FOO"] {
-			is.NoErr(fmt.Errorf("mismatch for path %s", file.Path))
+			is.NoErr(errors.Errorf("mismatch for path %s", file.Path))
 		}
 	}
 
