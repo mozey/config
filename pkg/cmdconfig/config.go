@@ -332,8 +332,7 @@ func refreshKeys(c *conf) {
 	sort.Strings(c.Keys)
 }
 
-// newConf reads a config file and sets the key map.
-// If env is set on ConfigCache, use it, and avoid reading the file again
+// newConf reads a config file and sets the key map
 func newConf(appDir string, env string) (configPath string, c *conf, err error) {
 	// New config
 	c = &conf{}
