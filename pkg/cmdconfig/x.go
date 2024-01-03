@@ -1,7 +1,7 @@
 package cmdconfig
 
-// This file defines x-platform config,
-// the correspoding "x_${GOOS}.go" file must set the appropriate value
+// This file defines cross-platform config,
+// the corresponding "x_${GOOS}.go" file must set values appropriate for GOOS
 
 // Files ending with "_${GOOS}.go" will only build for that OS,
 // see this https://stackoverflow.com/a/25162021/639133
