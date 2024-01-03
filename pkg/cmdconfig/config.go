@@ -30,6 +30,16 @@ type conf struct {
 	Keys []string
 }
 
+func (c *conf) refreshKeys() {
+	c.Keys = nil
+	// Set config keys
+	for k := range c.Map {
+		c.Keys = append(c.Keys, k)
+	}
+	// Sort keys
+	sort.Strings(c.Keys)
+}
+
 // .............................................................................
 
 // CmdIn for use with command functions
@@ -321,17 +331,6 @@ func ReadConfigFile(appDir, env string) (configPath string, b []byte, err error)
 	return configPath, b, nil
 }
 
-// TODO This should be a method on Config?
-func refreshKeys(c *conf) {
-	c.Keys = nil
-	// Set config keys
-	for k := range c.Map {
-		c.Keys = append(c.Keys, k)
-	}
-	// Sort keys
-	sort.Strings(c.Keys)
-}
-
 // newConf reads a config file and sets the key map
 func newConf(appDir string, env string) (configPath string, c *conf, err error) {
 	// New config
@@ -358,7 +357,7 @@ func newConf(appDir string, env string) (configPath string, c *conf, err error) 
 		return configPath, c, errors.WithStack(UnmarshalErr)
 	}
 
-	refreshKeys(c)
+	c.refreshKeys()
 
 	return configPath, c, nil
 }
@@ -448,7 +447,7 @@ func refreshConfigByEnv(
 			m[key] = value
 		}
 
-		refreshKeys(conf)
+		conf.refreshKeys()
 	}
 
 	// Marshal config
