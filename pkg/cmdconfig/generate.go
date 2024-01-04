@@ -12,6 +12,10 @@ import (
 	"github.com/pkg/errors"
 )
 
+const TokenTemplateKey = "_TEMPLATE_"
+
+const TokenExtendedConfigKey = "_X_"
+
 type GenerateKey struct {
 	KeyPrefix  string
 	KeyPrivate string
@@ -78,7 +82,7 @@ func NewGenerateData(in *CmdIn) (data *GenerateData, err error) {
 		data.KeyMap[formattedKey] = i
 
 		// If template key then append to templateKeys
-		if strings.Contains(keyWithPrefix, "_TEMPLATE") {
+		if strings.Contains(keyWithPrefix, TokenTemplateKey) {
 			templateKeys = append(templateKeys, generateKey)
 		}
 	}

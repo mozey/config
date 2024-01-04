@@ -331,8 +331,10 @@ func ReadConfigFile(appDir, env string) (configPath string, b []byte, err error)
 	return configPath, b, nil
 }
 
-// newConf reads a config file and sets the key map
-func newConf(appDir string, env string) (configPath string, c *conf, err error) {
+// loadConf loads config from a file
+func loadConf(appDir string, env string) (
+	configPath string, c *conf, err error) {
+
 	// New config
 	c = &conf{}
 
@@ -360,6 +362,36 @@ func newConf(appDir string, env string) (configPath string, c *conf, err error) 
 	c.refreshKeys()
 
 	return configPath, c, nil
+}
+
+// newConf reads a config file and sets the key map
+func newConf(appDir string, env string) (configPaths []string, c *conf, err error) {
+	// Main config
+	configPath, c, err := loadConf(appDir, env)
+	if err != nil {
+		return configPaths, c, err
+	}
+	configPaths = append(configPaths, configPath)
+
+	// Extended config
+	// https://github.com/mozey/config/issues/47
+	// For each key in the main config file,
+	// check if it contains the TokenExtendedConfigKey,
+	// try to load the extended config,
+	// and merge it with the main config
+	for key, value := range c.Map {
+		if strings.Contains(key, TokenExtendedConfigKey) {
+			// TODO Merge extended config
+			// configPath, extendedConf, err := loadConf(value, env)
+			configPath, _, err := loadConf(value, env)
+			if err != nil {
+				return configPaths, c, err
+			}
+			configPaths = append(configPaths, configPath)
+		}
+	}
+
+	return configPaths, c, nil
 }
 
 // .............................................................................
@@ -408,12 +440,12 @@ func compareKeys(in *CmdIn) (buf *bytes.Buffer, files []File, err error) {
 func refreshConfigByEnv(
 	appDir string, prefix string, env string, keys ArgMap, values ArgMap,
 	del bool, format string) (
-	configPath string, b []byte, err error) {
+	configPaths []string, b []byte, err error) {
 
 	// Read config for the given env from file
-	configPath, conf, err := newConf(appDir, env)
+	configPaths, conf, err := newConf(appDir, env)
 	if err != nil {
-		return configPath, b, err
+		return configPaths, b, err
 	}
 
 	// Setup existing key value pairs
@@ -425,7 +457,7 @@ func refreshConfigByEnv(
 	// Validate input
 	for i, key := range keys {
 		if !strings.HasPrefix(key, prefix) {
-			return configPath, b, errors.Errorf(
+			return configPaths, b, errors.Errorf(
 				"key for env %s must start with prefix %s", env, prefix)
 		}
 
@@ -438,7 +470,7 @@ func refreshConfigByEnv(
 
 		} else {
 			if i > len(values)-1 {
-				return configPath, b, errors.Errorf(
+				return configPaths, b, errors.Errorf(
 					"env %s missing value for key %s", env, key)
 			}
 			value := values[i]
@@ -451,7 +483,10 @@ func refreshConfigByEnv(
 	}
 
 	// Marshal config
-	fileType := filepath.Ext(configPath)
+	if len(configPaths) == 0 {
+		return configPaths, b, errors.Errorf("empty config path")
+	}
+	fileType := filepath.Ext(configPaths[0])
 	var MarshalErr error
 	dotFormat := fmt.Sprintf(".%s", format)
 	if dotFormat == FileTypeEnv ||
@@ -459,9 +494,9 @@ func refreshConfigByEnv(
 		dotFormat == FileTypeYAML {
 		//	Override config file format
 		fileType = dotFormat
-		configPath, err = getConfigFilePath(appDir, env, dotFormat)
+		configPaths[0], err = getConfigFilePath(appDir, env, dotFormat)
 		if err != nil {
-			return configPath, b, err
+			return configPaths, b, err
 		}
 	}
 	if fileType == FileTypeEnv {
@@ -472,10 +507,10 @@ func refreshConfigByEnv(
 		b, MarshalErr = yaml.Marshal(m)
 	}
 	if MarshalErr != nil {
-		return configPath, b, errors.WithStack(MarshalErr)
+		return configPaths, b, errors.WithStack(MarshalErr)
 	}
 
-	return configPath, b, nil
+	return configPaths, b, nil
 }
 
 func updateConfig(in *CmdIn) (buf *bytes.Buffer, files []File, err error) {
@@ -518,14 +553,17 @@ func updateConfig(in *CmdIn) (buf *bytes.Buffer, files []File, err error) {
 	// Refresh config for the listed envs
 	files = make([]File, len(envs))
 	for i, env := range envs {
-		var configPath string
-		configPath, b, err = refreshConfigByEnv(
+		var configPaths []string
+		configPaths, b, err = refreshConfigByEnv(
 			in.AppDir, in.Prefix, env, in.Keys, in.Values, in.Del, in.Format)
 		if err != nil {
 			return buf, files, err
 		}
+		if len(configPaths) == 0 {
+			return buf, files, errors.Errorf("empty config path")
+		}
 		files[i] = File{
-			Path: configPath,
+			Path: configPaths[0],
 			Buf:  bytes.NewBuffer(b),
 		}
 	}
