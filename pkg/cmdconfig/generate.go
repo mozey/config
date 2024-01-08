@@ -12,9 +12,7 @@ import (
 	"github.com/pkg/errors"
 )
 
-const TokenTemplateKey = "_TEMPLATE_"
-
-const TokenExtendedConfigKey = "_X_"
+const TokenTemplateKey = "_TEMPLATE"
 
 type GenerateKey struct {
 	KeyPrefix  string
