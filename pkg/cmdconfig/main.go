@@ -27,9 +27,11 @@ const (
 	FlagDel      = "del"
 	FlagDryRun   = "dry-run"
 	FlagEnv      = "env"
+	FlagExtend   = "extend"
 	FlagGenerate = "generate"
 	FlagGet      = "get"
 	FlagKey      = "key"
+	FlagMerge    = "merge"
 	FlagPrefix   = "prefix"
 	FlagSep      = "sep"
 	FlagValue    = "value"
@@ -82,6 +84,9 @@ func ParseFlags(version string) *CmdIn {
 		"Override compiled x-platform config")
 	flag.StringVar(&in.Format,
 		FlagFormat, "", "Override config file format")
+	in.Extend = ArgMap{}
+	flag.Var(&in.Extend,
+		FlagExtend, "Extend config")
 
 	flag.Parse()
 

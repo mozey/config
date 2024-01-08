@@ -78,6 +78,10 @@ type CmdIn struct {
 	OS string
 	// Override config file format
 	Format string
+	// Extend config
+	Extend ArgMap
+	// Merge with parent config
+	Merge bool
 }
 
 type CmdInParams struct {
@@ -364,32 +368,86 @@ func loadConf(appDir string, env string) (
 	return configPath, c, nil
 }
 
+type confParams struct {
+	appDir string
+	env    string
+	merge  bool
+	extend []string
+}
+
+// TODO Refactor newConf
+// - Rename to newSingleConf without changing references
+// - new*Conf methods take confParams
+
 // newConf reads a config file and sets the key map
 func newConf(appDir string, env string) (configPaths []string, c *conf, err error) {
-	// Main config
 	configPath, c, err := loadConf(appDir, env)
 	if err != nil {
 		return configPaths, c, err
 	}
 	configPaths = append(configPaths, configPath)
 
-	// Extended config
-	// https://github.com/mozey/config/issues/47
-	// For each key in the main config file,
-	// check if it contains the TokenExtendedConfigKey,
-	// try to load the extended config,
-	// and merge it with the main config
-	for key, value := range c.Map {
-		if strings.Contains(key, TokenExtendedConfigKey) {
-			// TODO Merge extended config
-			// configPath, extendedConf, err := loadConf(value, env)
-			configPath, _, err := loadConf(value, env)
-			if err != nil {
-				return configPaths, c, err
-			}
-			configPaths = append(configPaths, configPath)
-		}
+	return configPaths, c, nil
+}
+
+// newExtendConf reads config from multiple files.
+// The main config file in the APP_DIR is extended
+// with config files from extensions in sub dirs
+// https://github.com/mozey/config/issues/47
+func newExtendConf(params confParams) (
+	configPaths []string, c *conf, err error) {
+
+	if params.merge {
+		// TODO Support both extend and merge?
+		// For merge, should APP_DIR be set to extension or the parent dir?
+		// For CLI usage it makes sense if it's set to the extension dir
+		return configPaths, c, errors.Errorf("not implemented")
 	}
+
+	// Main config
+	configPaths, c, err = newConf(params.appDir, params.env)
+	if err != nil {
+		return configPaths, c, err
+	}
+
+	// Try to load the extension config,
+	// and merge it with the main config
+	for _, extDir := range params.extend {
+		// TODO Merge extended config
+		// configPath, extConf, err := loadConf(value, env)
+		configPath, _, err := loadConf(extDir, params.env)
+		if err != nil {
+			return configPaths, c, err
+		}
+		configPaths = append(configPaths, configPath)
+	}
+
+	return configPaths, c, nil
+}
+
+// newMergeConf merges an extension with a parent config file
+func newMergeConf(params confParams) (
+	configPaths []string, c *conf, err error) {
+
+	// TODO Search for parent relative to appDir
+	parentDir := ""
+
+	// Parent config
+	configPath, c, err := loadConf(parentDir, params.env)
+	if err != nil {
+		return configPaths, c, err
+	}
+	configPaths = append(configPaths, configPath)
+
+	// Extended config
+	// configPath, extConf, err := loadConf(appDir, env)
+	configPath, _, err = loadConf(params.appDir, params.env)
+	if err != nil {
+		return configPaths, c, err
+	}
+	configPaths = append(configPaths, configPath)
+
+	// TODO Merge extended config
 
 	return configPaths, c, nil
 }

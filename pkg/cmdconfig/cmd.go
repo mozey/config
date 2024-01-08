@@ -6,7 +6,6 @@ import (
 )
 
 const (
-	CmdVersion      = "version"
 	CmdBase64       = "base64"
 	CmdCompare      = "compare"
 	CmdCSV          = "csv"
@@ -14,6 +13,7 @@ const (
 	CmdGet          = "get"
 	CmdSetEnv       = "set-env"
 	CmdUpdateConfig = "update-config"
+	CmdVersion      = "version"
 )
 
 // Cmd runs a command given flags and input from the user
