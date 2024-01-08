@@ -50,7 +50,12 @@ func NewGenerateData(in *CmdIn) (data *GenerateData, err error) {
 		AppDir: in.AppDir,
 	}
 
-	_, config, err := newConf(in.AppDir, in.Env)
+	_, config, err := newConf(confParams{
+		appDir: in.AppDir,
+		env:    in.Env,
+		extend: in.Extend,
+		merge:  in.Merge,
+	})
 	if err != nil {
 		return data, err
 	}

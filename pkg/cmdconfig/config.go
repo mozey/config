@@ -371,16 +371,29 @@ func loadConf(appDir string, env string) (
 type confParams struct {
 	appDir string
 	env    string
-	merge  bool
 	extend []string
+	merge  bool
 }
 
-// TODO Refactor newConf
-// - Rename to newSingleConf without changing references
-// - new*Conf methods take confParams
+// newConf constructor for conf
+func newConf(params confParams) (
+	configPaths []string, c *conf, err error) {
 
-// newConf reads a config file and sets the key map
-func newConf(appDir string, env string) (configPaths []string, c *conf, err error) {
+	if len(params.extend) > 0 {
+		// Extend config
+		return newExtendConf(params)
+
+	} else if params.merge {
+		// Merge with parent config
+		return newMergeConf(params)
+	}
+
+	// Default
+	return newSingleConf(params.appDir, params.env)
+}
+
+// newSingleConf reads a config file and sets the key map
+func newSingleConf(appDir string, env string) (configPaths []string, c *conf, err error) {
 	configPath, c, err := loadConf(appDir, env)
 	if err != nil {
 		return configPaths, c, err
@@ -405,7 +418,7 @@ func newExtendConf(params confParams) (
 	}
 
 	// Main config
-	configPaths, c, err = newConf(params.appDir, params.env)
+	configPaths, c, err = newSingleConf(params.appDir, params.env)
 	if err != nil {
 		return configPaths, c, err
 	}
@@ -459,11 +472,21 @@ func newMergeConf(params confParams) (
 func compareKeys(in *CmdIn) (buf *bytes.Buffer, files []File, err error) {
 	buf = new(bytes.Buffer)
 
-	_, config, err := newConf(in.AppDir, in.Env)
+	_, config, err := newConf(confParams{
+		appDir: in.AppDir,
+		env:    in.Env,
+		extend: in.Extend,
+		merge:  in.Merge,
+	})
 	if err != nil {
 		return buf, files, err
 	}
-	_, compConfig, err := newConf(in.AppDir, in.Compare)
+	_, compConfig, err := newConf(confParams{
+		appDir: in.AppDir,
+		env:    in.Compare,
+		extend: in.Extend,
+		merge:  in.Merge,
+	})
 	if err != nil {
 		return buf, files, err
 	}
@@ -501,7 +524,7 @@ func refreshConfigByEnv(
 	configPaths []string, b []byte, err error) {
 
 	// Read config for the given env from file
-	configPaths, conf, err := newConf(appDir, env)
+	configPaths, conf, err := newSingleConf(appDir, env)
 	if err != nil {
 		return configPaths, b, err
 	}
@@ -633,8 +656,9 @@ func updateConfig(in *CmdIn) (buf *bytes.Buffer, files []File, err error) {
 
 type envKeys map[string]bool
 
+// setEnv commands to be executed in the shell
 func setEnv(in *CmdIn) (buf *bytes.Buffer, files []File, err error) {
-	_, config, err := newConf(in.AppDir, in.Env)
+	_, config, err := newSingleConf(in.AppDir, in.Env)
 	if err != nil {
 		return buf, files, err
 	}
@@ -696,7 +720,12 @@ func setEnv(in *CmdIn) (buf *bytes.Buffer, files []File, err error) {
 func generateCSV(in *CmdIn) (buf *bytes.Buffer, files []File, err error) {
 	buf = new(bytes.Buffer)
 
-	_, config, err := newConf(in.AppDir, in.Env)
+	_, config, err := newConf(confParams{
+		appDir: in.AppDir,
+		env:    in.Env,
+		extend: in.Extend,
+		merge:  in.Merge,
+	})
 	if err != nil {
 		return buf, files, err
 	}
@@ -727,7 +756,12 @@ func generateCSV(in *CmdIn) (buf *bytes.Buffer, files []File, err error) {
 func encodeBase64(in *CmdIn) (buf *bytes.Buffer, files []File, err error) {
 	buf = new(bytes.Buffer)
 
-	_, config, err := newConf(in.AppDir, in.Env)
+	_, config, err := newConf(confParams{
+		appDir: in.AppDir,
+		env:    in.Env,
+		extend: in.Extend,
+		merge:  in.Merge,
+	})
 	if err != nil {
 		return buf, files, err
 	}
@@ -748,7 +782,12 @@ func printValue(in *CmdIn) (buf *bytes.Buffer, files []File, err error) {
 	buf = new(bytes.Buffer)
 	key := in.PrintValue
 
-	_, config, err := newConf(in.AppDir, in.Env)
+	_, config, err := newConf(confParams{
+		appDir: in.AppDir,
+		env:    in.Env,
+		extend: in.Extend,
+		merge:  in.Merge,
+	})
 	if err != nil {
 		return buf, files, err
 	}

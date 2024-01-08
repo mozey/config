@@ -102,7 +102,7 @@ func TestNewConfigENV(t *testing.T) {
 		0644)
 	is.NoErr(err)
 
-	_, config, err := newConf(tmp, env)
+	_, config, err := newSingleConf(tmp, env)
 	is.NoErr(err)
 
 	is.Equal(config.Map["APP_FOO"], "foo")
@@ -130,7 +130,7 @@ func TestNewConfigJSON(t *testing.T) {
 		0644)
 	is.NoErr(err)
 
-	_, config, err := newConf(tmp, env)
+	_, config, err := newSingleConf(tmp, env)
 	is.NoErr(err)
 	is.Equal(len(config.Keys), 2)
 	is.Equal(config.Map["APP_FOO"], "foo")
@@ -158,7 +158,7 @@ func TestNewConfigYAML(t *testing.T) {
 		0644)
 	is.NoErr(err)
 
-	_, config, err := newConf(tmp, env)
+	_, config, err := newSingleConf(tmp, env)
 	is.NoErr(err)
 	is.Equal(len(config.Keys), 2)
 	is.Equal(config.Map["APP_FOO"], "foo")
