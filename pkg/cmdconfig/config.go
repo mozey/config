@@ -43,8 +43,8 @@ func (c *conf) refreshKeys() {
 // extend config with another config, keys must be unique.
 // Remember to call refreshKeys afterwards
 func (c *conf) extend(ext *conf) error {
-	for k := range ext.Map {
-		v, dup := c.Map[k]
+	for k, v := range ext.Map {
+		_, dup := c.Map[k]
 		if dup {
 			return ErrDuplicateKey(k)
 		}
@@ -430,7 +430,7 @@ func newExtendedConf(params confParams) (
 		// the project structure looks like this: parent/current/extension,
 		// that is three levels of config files.
 		// Don't implement this unless there is a specific use case
-		return configPaths, c, errors.Errorf("not implemented")
+		return configPaths, c, ErrNotImplemented
 	}
 
 	// Main config
@@ -439,15 +439,15 @@ func newExtendedConf(params confParams) (
 		return configPaths, c, err
 	}
 
-	// Try to load the extension config,
-	// and merge it with the main config
+	// Try to load the extension config
 	for _, extDir := range params.extend {
-		configPath, extConf, err := loadConf(extDir, params.env)
+		configPath, extConf, err := loadConf(
+			filepath.Join(params.appDir, extDir), params.env)
 		if err != nil {
 			return configPaths, c, err
 		}
 		configPaths = append(configPaths, configPath)
-		// Extend config
+		// Extend main config
 		err = c.extend(extConf)
 		if err != nil {
 			return configPaths, c, err
