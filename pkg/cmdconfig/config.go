@@ -46,7 +46,7 @@ func (c *conf) extend(ext *conf) error {
 	for k := range ext.Map {
 		v, dup := c.Map[k]
 		if dup {
-			return fmt.Errorf("duplicate key %s", k)
+			return ErrDuplicateKey(k)
 		}
 		c.Map[k] = v
 	}
