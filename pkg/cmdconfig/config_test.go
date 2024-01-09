@@ -639,11 +639,9 @@ func BenchmarkExecuteTemplate(b *testing.B) {
 
 // BenchmarkExecuteTemplateSprintf demonstrates that using sprintf
 // is much faster than using text/template.
-// However, sprintf does not support named variables.
-// Changing the order of variables for TEMPLATE_* keys in config.ENV.json files
-// must not make ExecTemplate* methods return different values.
-// Therefore going with text/template,
-// avoid calling ExecTemplate* methods inside loops for now.
+// However, sprintf does not support named variables,
+// and changing the order of variables for _TEMPLATE keys in config files
+// must not break previously generated code.
 // TODO Investigate regex replace performance vs text/template
 // https://github.com/mozey/config/issues/14
 func BenchmarkExecuteTemplateSprintf(b *testing.B) {
