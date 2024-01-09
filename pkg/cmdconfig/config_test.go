@@ -182,7 +182,7 @@ func TestNewExtendedConf(t *testing.T) {
 
 	env := "dev"
 
-	key0 := "APP_FOO"
+	key0 := "APP_MAIN"
 	key1 := "APP_EXT1"
 	key2 := "APP_EXT2"
 	foo := "foo"
@@ -193,7 +193,7 @@ func TestNewExtendedConf(t *testing.T) {
 		configPath, []byte(fmt.Sprintf("%s=%s0", key0, foo)), perms)
 	is.NoErr(err)
 
-	// ext1Path
+	// ext1
 	ext1 := "ext1"
 	ext1Path := filepath.Join(tmp, ext1)
 	err = os.Mkdir(ext1Path, dirPerms)
@@ -237,6 +237,67 @@ func TestNewExtendedConf(t *testing.T) {
 	is.Equal(c.Map[key0], fmt.Sprintf("%s0", foo))
 	is.Equal(c.Map[key1], fmt.Sprintf("%s1", foo))
 	is.Equal(c.Map[key2], fmt.Sprintf("%s2", foo))
+}
+
+func TestNewMergedConf(t *testing.T) {
+	is := testutil.Setup(t)
+
+	tmp, err := os.MkdirTemp("", "mozey-config")
+	is.NoErr(err)
+	defer (func() {
+		_ = os.RemoveAll(tmp)
+	})()
+
+	env := "dev"
+
+	key0 := "APP_MAIN"
+	key1 := "APP_EXT1"
+	foo := "foo"
+
+	// Create ext dir
+	ext1 := "ext1"
+	ext1Path := filepath.Join(tmp, ext1)
+	err = os.Mkdir(ext1Path, dirPerms)
+	is.NoErr(err)
+
+	params := confParams{
+		appDir: ext1Path,
+		env:    env,
+		extend: []string{},
+		merge:  true,
+	}
+	_, _, err = newMergedConf(params)
+	is.True(errors.Is(err, ErrParentNotFound)) // Parent config not found
+
+	// main
+	configPath := filepath.Join(tmp, ".env")
+	err = os.WriteFile(
+		configPath, []byte(fmt.Sprintf("%s=%s0", key0, foo)), perms)
+	is.NoErr(err)
+
+	// ext1
+	configPath = filepath.Join(ext1Path, ".env")
+	err = os.WriteFile(
+		configPath, []byte(fmt.Sprintf("%s=%s1", key0, foo)), perms)
+	is.NoErr(err)
+
+	params.extend = []string{ext1}
+	_, _, err = newMergedConf(params)
+	is.True(errors.Is(err, ErrNotImplemented)) // Not implemented
+
+	params.extend = []string{}
+	_, _, err = newMergedConf(params)
+	is.True(errors.Is(err, ErrDuplicateKey(""))) // Duplicate key
+
+	err = os.WriteFile(
+		configPath, []byte(fmt.Sprintf("%s=%s1", key1, foo)), perms)
+	is.NoErr(err)
+
+	// Verify config is merged
+	_, c, err := newMergedConf(params)
+	is.NoErr(err)
+	is.Equal(c.Map[key0], fmt.Sprintf("%s0", foo))
+	is.Equal(c.Map[key1], fmt.Sprintf("%s1", foo))
 }
 
 func TestCompareKeys(t *testing.T) {

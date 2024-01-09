@@ -9,3 +9,6 @@ var ErrDuplicateKey = func(key string) error {
 }
 
 var ErrNotImplemented = errors.NewWithCausef(ErrCmdConfig, "not implemented")
+
+var ErrParentNotFound = errors.NewWithCausef(
+	ErrCmdConfig, "parent config not found")

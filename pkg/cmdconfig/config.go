@@ -463,15 +463,31 @@ func newExtendedConf(params confParams) (
 func newMergedConf(params confParams) (
 	configPaths []string, c *conf, err error) {
 
-	// TODO Search for parent relative to appDir
-	parentDir := ""
-
-	// Parent config
-	configPath, c, err := loadConf(parentDir, params.env)
-	if err != nil {
-		return configPaths, c, err
+	if len(params.extend) > 0 {
+		return configPaths, c, ErrNotImplemented
 	}
-	configPaths = append(configPaths, configPath)
+
+	// Search for parent config relative to appDir
+	configPath := ""
+	parentDir := filepath.Dir(params.appDir)
+	for {
+		// Try to load parent config
+		configPath, c, err = loadConf(parentDir, params.env)
+		if err == nil {
+			// Found it
+			configPaths = append(configPaths, configPath)
+			break
+		}
+		// Go up another level
+		parentDir = filepath.Dir(parentDir)
+		if parentDir == string(filepath.Separator) || parentDir == "." {
+			// Stop searching at root or if path is empty
+			break
+		}
+	}
+	if len(configPaths) == 0 {
+		return configPaths, c, ErrParentNotFound
+	}
 
 	// Extended config
 	configPath, extConf, err := loadConf(params.appDir, params.env)
