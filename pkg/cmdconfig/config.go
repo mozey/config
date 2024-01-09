@@ -40,6 +40,19 @@ func (c *conf) refreshKeys() {
 	sort.Strings(c.Keys)
 }
 
+// extend config with another config, keys must be unique.
+// Remember to call refreshKeys afterwards
+func (c *conf) extend(ext *conf) error {
+	for k := range ext.Map {
+		v, dup := c.Map[k]
+		if dup {
+			return fmt.Errorf("duplicate key %s", k)
+		}
+		c.Map[k] = v
+	}
+	return nil
+}
+
 // .............................................................................
 
 // CmdIn for use with command functions
@@ -381,11 +394,11 @@ func newConf(params confParams) (
 
 	if len(params.extend) > 0 {
 		// Extend config
-		return newExtendConf(params)
+		return newExtendedConf(params)
 
 	} else if params.merge {
 		// Merge with parent config
-		return newMergeConf(params)
+		return newMergedConf(params)
 	}
 
 	// Default
@@ -403,17 +416,20 @@ func newSingleConf(appDir string, env string) (configPaths []string, c *conf, er
 	return configPaths, c, nil
 }
 
-// newExtendConf reads config from multiple files.
+// newExtendedConf reads config from multiple files.
 // The main config file in the APP_DIR is extended
 // with config files from extensions in sub dirs
 // https://github.com/mozey/config/issues/47
-func newExtendConf(params confParams) (
+func newExtendedConf(params confParams) (
 	configPaths []string, c *conf, err error) {
 
 	if params.merge {
 		// TODO Support both extend and merge?
-		// For merge, should APP_DIR be set to extension or the parent dir?
-		// For CLI usage it makes sense if it's set to the extension dir
+		// Note that APP_DIR is always set to the current working directory.
+		// If both extend and merge are set, then that implies
+		// the project structure looks like this: parent/current/extension,
+		// that is three levels of config files.
+		// Don't implement this unless there is a specific use case
 		return configPaths, c, errors.Errorf("not implemented")
 	}
 
@@ -426,20 +442,25 @@ func newExtendConf(params confParams) (
 	// Try to load the extension config,
 	// and merge it with the main config
 	for _, extDir := range params.extend {
-		// TODO Merge extended config
-		// configPath, extConf, err := loadConf(value, env)
-		configPath, _, err := loadConf(extDir, params.env)
+		configPath, extConf, err := loadConf(extDir, params.env)
 		if err != nil {
 			return configPaths, c, err
 		}
 		configPaths = append(configPaths, configPath)
+		// Extend config
+		err = c.extend(extConf)
+		if err != nil {
+			return configPaths, c, err
+		}
 	}
+
+	c.refreshKeys()
 
 	return configPaths, c, nil
 }
 
-// newMergeConf merges an extension with a parent config file
-func newMergeConf(params confParams) (
+// newMergedConf merges an extension with a parent config file
+func newMergedConf(params confParams) (
 	configPaths []string, c *conf, err error) {
 
 	// TODO Search for parent relative to appDir
@@ -453,14 +474,19 @@ func newMergeConf(params confParams) (
 	configPaths = append(configPaths, configPath)
 
 	// Extended config
-	// configPath, extConf, err := loadConf(appDir, env)
-	configPath, _, err = loadConf(params.appDir, params.env)
+	configPath, extConf, err := loadConf(params.appDir, params.env)
 	if err != nil {
 		return configPaths, c, err
 	}
 	configPaths = append(configPaths, configPath)
 
-	// TODO Merge extended config
+	// Merge with parent config
+	err = c.extend(extConf)
+	if err != nil {
+		return configPaths, c, err
+	}
+
+	c.refreshKeys()
 
 	return configPaths, c, nil
 }
