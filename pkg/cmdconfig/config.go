@@ -408,22 +408,34 @@ type confParams struct {
 func newConf(params confParams) (
 	configPaths []string, c *conf, err error) {
 
-	if len(params.extend) > 0 {
-		// Extend config
-		return newExtendedConf(params)
-
-	} else if params.merge {
-		// Merge with parent config
-		return newMergedConf(params)
-	}
-
 	// Default
 	configPaths, c, err = newSingleConf(params.appDir, params.env)
 	if err != nil {
 		return configPaths, c, err
 	}
 
-	// Extensions might be specified in the config file
+	if len(params.extend) > 0 {
+		// Extend config
+		return newExtendedConf(extConfParams{
+			mainConf:    c,
+			configPaths: configPaths,
+			appDir:      params.appDir,
+			env:         params.env,
+			extend:      params.extend,
+		})
+
+	} else if params.merge && len(configPaths) > 0 {
+		// Merge with parent config
+		return newMergedConf(mergeConfParams{
+			extConf:    c,
+			configPath: configPaths[0],
+			appDir:     params.appDir,
+			env:        params.env,
+		})
+	}
+
+	// If the flag is not used,
+	// extensions might be specified in the config file
 	for _, key := range c.Keys {
 		if key == KeyPrefixExtensions(params.prefix) {
 			extDirKey := KeyExtensionsDir(params.prefix)
@@ -432,12 +444,18 @@ func newConf(params confParams) (
 				return configPaths, c, ErrMissingKey(extDirKey)
 			}
 			parts := strings.Split(key, ",")
-			params.extend = make([]string, 0)
+			extend := make([]string, 0)
 			for _, extension := range parts {
 				params.extend = append(
 					params.extend, filepath.Join(extDir, extension))
 			}
-			return newExtendedConf(params)
+			return newExtendedConf(extConfParams{
+				mainConf:    c,
+				configPaths: configPaths,
+				appDir:      params.appDir,
+				env:         params.env,
+				extend:      extend,
+			})
 		}
 	}
 
@@ -455,28 +473,24 @@ func newSingleConf(appDir string, env string) (configPaths []string, c *conf, er
 	return configPaths, c, nil
 }
 
+type extConfParams struct {
+	mainConf    *conf
+	configPaths []string
+	appDir      string
+	env         string
+	extend      []string
+}
+
 // newExtendedConf reads config from multiple files.
 // The main config file in the APP_DIR is extended
 // with config files from extensions in sub dirs
 // https://github.com/mozey/config/issues/47
-func newExtendedConf(params confParams) (
+func newExtendedConf(params extConfParams) (
 	configPaths []string, c *conf, err error) {
 
-	if params.merge {
-		// TODO Support both extend and merge?
-		// Note that APP_DIR is always set to the current working directory.
-		// If both extend and merge are set, then that implies
-		// the project structure looks like this: parent/current/extension,
-		// that is three levels of config files.
-		// Don't implement this unless there is a specific use case
-		return configPaths, c, ErrNotImplemented
-	}
-
 	// Main config
-	configPaths, c, err = newSingleConf(params.appDir, params.env)
-	if err != nil {
-		return configPaths, c, err
-	}
+	c = params.mainConf
+	configPaths = params.configPaths
 
 	// Try to load the extension config
 	for _, extDir := range params.extend {
@@ -498,13 +512,16 @@ func newExtendedConf(params confParams) (
 	return configPaths, c, nil
 }
 
-// newMergedConf merges an extension with a parent config file
-func newMergedConf(params confParams) (
-	configPaths []string, c *conf, err error) {
+type mergeConfParams struct {
+	extConf    *conf
+	configPath string
+	appDir     string
+	env        string
+}
 
-	if len(params.extend) > 0 {
-		return configPaths, c, ErrNotImplemented
-	}
+// newMergedConf merges an extension with a parent config file
+func newMergedConf(params mergeConfParams) (
+	configPaths []string, c *conf, err error) {
 
 	// Search for parent config relative to appDir
 	configPath := ""
@@ -528,15 +545,11 @@ func newMergedConf(params confParams) (
 		return configPaths, c, ErrParentNotFound
 	}
 
-	// Extended config
-	configPath, extConf, err := loadConf(params.appDir, params.env)
-	if err != nil {
-		return configPaths, c, err
-	}
-	configPaths = append(configPaths, configPath)
+	// Extension path
+	configPaths = append(configPaths, params.configPath)
 
 	// Merge with parent config
-	err = c.extend(extConf)
+	err = c.extend(params.extConf)
 	if err != nil {
 		return configPaths, c, err
 	}
