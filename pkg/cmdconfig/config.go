@@ -24,7 +24,22 @@ import (
 // The latter has properties for each config attribute in a project,
 // whereas this type is generic
 type conf struct {
-	// Map of key to value
+	// Map of key to value.
+	//
+	// Note that map keys are not ordered
+	// https://groups.google.com/g/golang-nuts/c/TDwGcRQe6mQ/m/SDb3pQ1dIpAJ
+	// Sorting must be done in the marshaller.
+	//
+	// MarshalENV:
+	// Keys are sorted
+	//
+	// json.MarshalIndent:
+	// "map keys are sorted and used as JSON object keys
+	// by applying the following rules", see encoding/json/encode.go
+	//
+	// yaml.Marshal:
+	// Keys are sorted, but not mentioned in comments?
+	// See gopkg.in/yaml.v2/sorter.go
 	Map map[string]string
 	// Keys sorted
 	Keys []string
@@ -571,12 +586,6 @@ func refreshConfigByEnv(
 		return configPaths, b, err
 	}
 
-	// Setup existing key value pairs
-	m := make(map[string]string)
-	for _, key := range conf.Keys {
-		m[key] = conf.Map[key]
-	}
-
 	// Validate input
 	for i, key := range keys {
 		if !strings.HasPrefix(key, prefix) {
@@ -586,9 +595,9 @@ func refreshConfigByEnv(
 
 		if del {
 			// Delete the key
-			_, ok := m[key]
+			_, ok := conf.Map[key]
 			if ok {
-				delete(m, key)
+				delete(conf.Map, key)
 			}
 
 		} else {
@@ -599,7 +608,7 @@ func refreshConfigByEnv(
 			value := values[i]
 
 			// Set value
-			m[key] = value
+			conf.Map[key] = value
 		}
 
 		conf.refreshKeys()
@@ -623,11 +632,11 @@ func refreshConfigByEnv(
 		}
 	}
 	if fileType == FileTypeEnv {
-		b, MarshalErr = MarshalENV(m)
+		b, MarshalErr = MarshalENV(conf)
 	} else if fileType == FileTypeJSON {
-		b, MarshalErr = json.MarshalIndent(m, "", "    ")
+		b, MarshalErr = json.MarshalIndent(conf.Map, "", "    ")
 	} else if fileType == FileTypeYAML {
-		b, MarshalErr = yaml.Marshal(m)
+		b, MarshalErr = yaml.Marshal(conf.Map)
 	}
 	if MarshalErr != nil {
 		return configPaths, b, errors.WithStack(MarshalErr)

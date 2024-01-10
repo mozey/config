@@ -35,19 +35,22 @@ func TestUnmarshalENV(t *testing.T) {
 func TestMarshalENV(t *testing.T) {
 	is := testutil.Setup(t)
 
-	m := make(map[string]string)
-	m["APP_FOO"] = "\"foo\""
-	m["APP_TEMPLATE"] = "my name is {{.Name}}"
-	m["AWS_PROFILE"] = "aws-local"
+	c := &conf{}
+	c.Map = make(map[string]string)
+	c.Map["APP_FOO"] = "\"foo\""
+	c.Map["APP_TEMPLATE"] = "my name is {{.Name}}"
+	c.Map["AWS_PROFILE"] = "aws-local"
+	c.refreshKeys()
 
-	b, err := MarshalENV(m)
+	b, err := MarshalENV(c)
 	is.NoErr(err)
 
-	// TODO Preserve shebang line?
+	// TODO Preserve comments
+	// https://github.com/mozey/config/issues/34
 	envFileBytes := []byte(`APP_FOO="foo"
 APP_TEMPLATE=my name is {{.Name}}
 AWS_PROFILE=aws-local
 `)
 
-	is.Equal(envFileBytes, b)
+	is.Equal(string(envFileBytes), string(b))
 }
