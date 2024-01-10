@@ -12,7 +12,17 @@ import (
 	"github.com/pkg/errors"
 )
 
-const TokenTemplateKey = "_TEMPLATE"
+func KeyPrefixTemplate(prefix string) string {
+	return fmt.Sprintf("%s_TEMPLATE", prefix)
+}
+
+func KeyPrefixExtensions(prefix string) string {
+	return fmt.Sprintf("%s_X", prefix)
+}
+
+func KeyExtensionsDir(prefix string) string {
+	return fmt.Sprintf("%s_X_DIR", prefix)
+}
 
 type GenerateKey struct {
 	KeyPrefix  string
@@ -85,7 +95,7 @@ func NewGenerateData(in *CmdIn) (data *GenerateData, err error) {
 		data.KeyMap[formattedKey] = i
 
 		// If template key then append to templateKeys
-		if strings.Contains(keyWithPrefix, TokenTemplateKey) {
+		if strings.HasPrefix(keyWithPrefix, KeyPrefixTemplate(in.Prefix)) {
 			templateKeys = append(templateKeys, generateKey)
 		}
 	}

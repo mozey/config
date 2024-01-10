@@ -397,6 +397,7 @@ func loadConf(appDir string, env string) (
 }
 
 type confParams struct {
+	prefix string
 	appDir string
 	env    string
 	extend []string
@@ -417,7 +418,30 @@ func newConf(params confParams) (
 	}
 
 	// Default
-	return newSingleConf(params.appDir, params.env)
+	configPaths, c, err = newSingleConf(params.appDir, params.env)
+	if err != nil {
+		return configPaths, c, err
+	}
+
+	// Extensions might be specified in the config file
+	for _, key := range c.Keys {
+		if key == KeyPrefixExtensions(params.prefix) {
+			extDirKey := KeyExtensionsDir(params.prefix)
+			extDir, ok := c.Map[extDirKey]
+			if !ok {
+				return configPaths, c, ErrMissingKey(extDirKey)
+			}
+			parts := strings.Split(key, ",")
+			params.extend = make([]string, 0)
+			for _, extension := range parts {
+				params.extend = append(
+					params.extend, filepath.Join(extDir, extension))
+			}
+			return newExtendedConf(params)
+		}
+	}
+
+	return configPaths, c, nil
 }
 
 // newSingleConf reads a config file and sets the key map
