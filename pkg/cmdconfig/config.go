@@ -24,10 +24,48 @@ import (
 // The latter has properties for each config attribute in a project,
 // whereas this type is generic
 type conf struct {
-	// Map of key to value
+	// Map of key to value.
+	//
+	// Note that map keys are not ordered
+	// https://groups.google.com/g/golang-nuts/c/TDwGcRQe6mQ/m/SDb3pQ1dIpAJ
+	// Sorting must be done in the marshaller.
+	//
+	// MarshalENV:
+	// Keys are sorted
+	//
+	// json.MarshalIndent:
+	// "map keys are sorted and used as JSON object keys
+	// by applying the following rules", see encoding/json/encode.go
+	//
+	// yaml.Marshal:
+	// Keys are sorted, but not mentioned in comments?
+	// See gopkg.in/yaml.v2/sorter.go
 	Map map[string]string
 	// Keys sorted
 	Keys []string
+}
+
+func (c *conf) refreshKeys() {
+	c.Keys = nil
+	// Set config keys
+	for k := range c.Map {
+		c.Keys = append(c.Keys, k)
+	}
+	// Sort keys
+	sort.Strings(c.Keys)
+}
+
+// extend config with another config, keys must be unique.
+// Remember to call refreshKeys afterwards
+func (c *conf) extend(ext *conf) error {
+	for k, v := range ext.Map {
+		_, dup := c.Map[k]
+		if dup {
+			return ErrDuplicateKey(k)
+		}
+		c.Map[k] = v
+	}
+	return nil
 }
 
 // .............................................................................
@@ -68,6 +106,10 @@ type CmdIn struct {
 	OS string
 	// Override config file format
 	Format string
+	// Extend config
+	Extend ArgMap
+	// Merge with parent config
+	Merge bool
 }
 
 type CmdInParams struct {
@@ -321,20 +363,10 @@ func ReadConfigFile(appDir, env string) (configPath string, b []byte, err error)
 	return configPath, b, nil
 }
 
-// TODO This should be a method on Config?
-func refreshKeys(c *conf) {
-	c.Keys = nil
-	// Set config keys
-	for k := range c.Map {
-		c.Keys = append(c.Keys, k)
-	}
-	// Sort keys
-	sort.Strings(c.Keys)
-}
+// loadConf loads config from a file
+func loadConf(appDir string, env string) (
+	configPath string, c *conf, err error) {
 
-// newConf reads a config file and sets the key map.
-// If env is set on ConfigCache, use it, and avoid reading the file again
-func newConf(appDir string, env string) (configPath string, c *conf, err error) {
 	// New config
 	c = &conf{}
 
@@ -359,9 +391,135 @@ func newConf(appDir string, env string) (configPath string, c *conf, err error) 
 		return configPath, c, errors.WithStack(UnmarshalErr)
 	}
 
-	refreshKeys(c)
+	c.refreshKeys()
 
 	return configPath, c, nil
+}
+
+type confParams struct {
+	appDir string
+	env    string
+	extend []string
+	merge  bool
+}
+
+// newConf constructor for conf
+func newConf(params confParams) (
+	configPaths []string, c *conf, err error) {
+
+	if len(params.extend) > 0 {
+		// Extend config
+		return newExtendedConf(params)
+
+	} else if params.merge {
+		// Merge with parent config
+		return newMergedConf(params)
+	}
+
+	// Default
+	return newSingleConf(params.appDir, params.env)
+}
+
+// newSingleConf reads a config file and sets the key map
+func newSingleConf(appDir string, env string) (configPaths []string, c *conf, err error) {
+	configPath, c, err := loadConf(appDir, env)
+	if err != nil {
+		return configPaths, c, err
+	}
+	configPaths = append(configPaths, configPath)
+
+	return configPaths, c, nil
+}
+
+// newExtendedConf reads config from multiple files.
+// The main config file in the APP_DIR is extended
+// with config files from extensions in sub dirs
+// https://github.com/mozey/config/issues/47
+func newExtendedConf(params confParams) (
+	configPaths []string, c *conf, err error) {
+
+	if params.merge {
+		// TODO Support both extend and merge?
+		// Note that APP_DIR is always set to the current working directory.
+		// If both extend and merge are set, then that implies
+		// the project structure looks like this: parent/current/extension,
+		// that is three levels of config files.
+		// Don't implement this unless there is a specific use case
+		return configPaths, c, ErrNotImplemented
+	}
+
+	// Main config
+	configPaths, c, err = newSingleConf(params.appDir, params.env)
+	if err != nil {
+		return configPaths, c, err
+	}
+
+	// Try to load the extension config
+	for _, extDir := range params.extend {
+		configPath, extConf, err := loadConf(
+			filepath.Join(params.appDir, extDir), params.env)
+		if err != nil {
+			return configPaths, c, err
+		}
+		configPaths = append(configPaths, configPath)
+		// Extend main config
+		err = c.extend(extConf)
+		if err != nil {
+			return configPaths, c, err
+		}
+	}
+
+	c.refreshKeys()
+
+	return configPaths, c, nil
+}
+
+// newMergedConf merges an extension with a parent config file
+func newMergedConf(params confParams) (
+	configPaths []string, c *conf, err error) {
+
+	if len(params.extend) > 0 {
+		return configPaths, c, ErrNotImplemented
+	}
+
+	// Search for parent config relative to appDir
+	configPath := ""
+	parentDir := filepath.Dir(params.appDir)
+	for {
+		// Try to load parent config
+		configPath, c, err = loadConf(parentDir, params.env)
+		if err == nil {
+			// Found it
+			configPaths = append(configPaths, configPath)
+			break
+		}
+		// Go up another level
+		parentDir = filepath.Dir(parentDir)
+		if parentDir == string(filepath.Separator) || parentDir == "." {
+			// Stop searching at root or if path is empty
+			break
+		}
+	}
+	if len(configPaths) == 0 {
+		return configPaths, c, ErrParentNotFound
+	}
+
+	// Extended config
+	configPath, extConf, err := loadConf(params.appDir, params.env)
+	if err != nil {
+		return configPaths, c, err
+	}
+	configPaths = append(configPaths, configPath)
+
+	// Merge with parent config
+	err = c.extend(extConf)
+	if err != nil {
+		return configPaths, c, err
+	}
+
+	c.refreshKeys()
+
+	return configPaths, c, nil
 }
 
 // .............................................................................
@@ -371,11 +529,21 @@ func newConf(appDir string, env string) (configPath string, c *conf, err error) 
 func compareKeys(in *CmdIn) (buf *bytes.Buffer, files []File, err error) {
 	buf = new(bytes.Buffer)
 
-	_, config, err := newConf(in.AppDir, in.Env)
+	_, config, err := newConf(confParams{
+		appDir: in.AppDir,
+		env:    in.Env,
+		extend: in.Extend,
+		merge:  in.Merge,
+	})
 	if err != nil {
 		return buf, files, err
 	}
-	_, compConfig, err := newConf(in.AppDir, in.Compare)
+	_, compConfig, err := newConf(confParams{
+		appDir: in.AppDir,
+		env:    in.Compare,
+		extend: in.Extend,
+		merge:  in.Merge,
+	})
 	if err != nil {
 		return buf, files, err
 	}
@@ -410,50 +578,47 @@ func compareKeys(in *CmdIn) (buf *bytes.Buffer, files []File, err error) {
 func refreshConfigByEnv(
 	appDir string, prefix string, env string, keys ArgMap, values ArgMap,
 	del bool, format string) (
-	configPath string, b []byte, err error) {
+	configPaths []string, b []byte, err error) {
 
 	// Read config for the given env from file
-	configPath, conf, err := newConf(appDir, env)
+	configPaths, conf, err := newSingleConf(appDir, env)
 	if err != nil {
-		return configPath, b, err
-	}
-
-	// Setup existing key value pairs
-	m := make(map[string]string)
-	for _, key := range conf.Keys {
-		m[key] = conf.Map[key]
+		return configPaths, b, err
 	}
 
 	// Validate input
 	for i, key := range keys {
 		if !strings.HasPrefix(key, prefix) {
-			return configPath, b, errors.Errorf(
+			return configPaths, b, errors.Errorf(
 				"key for env %s must start with prefix %s", env, prefix)
 		}
 
 		if del {
 			// Delete the key
-			_, ok := m[key]
+			_, ok := conf.Map[key]
 			if ok {
-				delete(m, key)
+				delete(conf.Map, key)
 			}
 
 		} else {
 			if i > len(values)-1 {
-				return configPath, b, errors.Errorf(
+				return configPaths, b, errors.Errorf(
 					"env %s missing value for key %s", env, key)
 			}
 			value := values[i]
 
 			// Set value
-			m[key] = value
+			conf.Map[key] = value
 		}
 
-		refreshKeys(conf)
+		conf.refreshKeys()
 	}
 
 	// Marshal config
-	fileType := filepath.Ext(configPath)
+	if len(configPaths) == 0 {
+		return configPaths, b, errors.Errorf("empty config path")
+	}
+	fileType := filepath.Ext(configPaths[0])
 	var MarshalErr error
 	dotFormat := fmt.Sprintf(".%s", format)
 	if dotFormat == FileTypeEnv ||
@@ -461,23 +626,23 @@ func refreshConfigByEnv(
 		dotFormat == FileTypeYAML {
 		//	Override config file format
 		fileType = dotFormat
-		configPath, err = getConfigFilePath(appDir, env, dotFormat)
+		configPaths[0], err = getConfigFilePath(appDir, env, dotFormat)
 		if err != nil {
-			return configPath, b, err
+			return configPaths, b, err
 		}
 	}
 	if fileType == FileTypeEnv {
-		b, MarshalErr = MarshalENV(m)
+		b, MarshalErr = MarshalENV(conf)
 	} else if fileType == FileTypeJSON {
-		b, MarshalErr = json.MarshalIndent(m, "", "    ")
+		b, MarshalErr = json.MarshalIndent(conf.Map, "", "    ")
 	} else if fileType == FileTypeYAML {
-		b, MarshalErr = yaml.Marshal(m)
+		b, MarshalErr = yaml.Marshal(conf.Map)
 	}
 	if MarshalErr != nil {
-		return configPath, b, errors.WithStack(MarshalErr)
+		return configPaths, b, errors.WithStack(MarshalErr)
 	}
 
-	return configPath, b, nil
+	return configPaths, b, nil
 }
 
 func updateConfig(in *CmdIn) (buf *bytes.Buffer, files []File, err error) {
@@ -520,14 +685,17 @@ func updateConfig(in *CmdIn) (buf *bytes.Buffer, files []File, err error) {
 	// Refresh config for the listed envs
 	files = make([]File, len(envs))
 	for i, env := range envs {
-		var configPath string
-		configPath, b, err = refreshConfigByEnv(
+		var configPaths []string
+		configPaths, b, err = refreshConfigByEnv(
 			in.AppDir, in.Prefix, env, in.Keys, in.Values, in.Del, in.Format)
 		if err != nil {
 			return buf, files, err
 		}
+		if len(configPaths) == 0 {
+			return buf, files, errors.Errorf("empty config path")
+		}
 		files[i] = File{
-			Path: configPath,
+			Path: configPaths[0],
 			Buf:  bytes.NewBuffer(b),
 		}
 	}
@@ -539,8 +707,9 @@ func updateConfig(in *CmdIn) (buf *bytes.Buffer, files []File, err error) {
 
 type envKeys map[string]bool
 
+// setEnv commands to be executed in the shell
 func setEnv(in *CmdIn) (buf *bytes.Buffer, files []File, err error) {
-	_, config, err := newConf(in.AppDir, in.Env)
+	_, config, err := newSingleConf(in.AppDir, in.Env)
 	if err != nil {
 		return buf, files, err
 	}
@@ -602,7 +771,12 @@ func setEnv(in *CmdIn) (buf *bytes.Buffer, files []File, err error) {
 func generateCSV(in *CmdIn) (buf *bytes.Buffer, files []File, err error) {
 	buf = new(bytes.Buffer)
 
-	_, config, err := newConf(in.AppDir, in.Env)
+	_, config, err := newConf(confParams{
+		appDir: in.AppDir,
+		env:    in.Env,
+		extend: in.Extend,
+		merge:  in.Merge,
+	})
 	if err != nil {
 		return buf, files, err
 	}
@@ -633,7 +807,12 @@ func generateCSV(in *CmdIn) (buf *bytes.Buffer, files []File, err error) {
 func encodeBase64(in *CmdIn) (buf *bytes.Buffer, files []File, err error) {
 	buf = new(bytes.Buffer)
 
-	_, config, err := newConf(in.AppDir, in.Env)
+	_, config, err := newConf(confParams{
+		appDir: in.AppDir,
+		env:    in.Env,
+		extend: in.Extend,
+		merge:  in.Merge,
+	})
 	if err != nil {
 		return buf, files, err
 	}
@@ -654,7 +833,12 @@ func printValue(in *CmdIn) (buf *bytes.Buffer, files []File, err error) {
 	buf = new(bytes.Buffer)
 	key := in.PrintValue
 
-	_, config, err := newConf(in.AppDir, in.Env)
+	_, config, err := newConf(confParams{
+		appDir: in.AppDir,
+		env:    in.Env,
+		extend: in.Extend,
+		merge:  in.Merge,
+	})
 	if err != nil {
 		return buf, files, err
 	}

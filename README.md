@@ -364,11 +364,11 @@ Keys are case sensitive, and it's advised to make keys **all uppercase**.
 
 Use (uppercase) **SNAKE_CASE**.
 
+**TODO** Review this
 Assuming the default key prefix `APP_`, to avoid un-defined behaviour when generating package code, **do not start keys with**
 - `APP_EXEC_TEMPLATE_`
 - `APP_FN_`
 - `APP_SET_`
-See [error on reserved prefix when generating package code](https://github.com/mozey/config/issues/37)
 
 In addition to the `APP_` prefix, the configu command also supports additional prefixes like `AWS_`.
 

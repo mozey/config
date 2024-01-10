@@ -23,6 +23,9 @@ import (
 	"github.com/rs/zerolog/log"
 )
 
+const dirPerms = 0700 // Same as MkdirTemp
+const perms = 0600    // Read and write but no execute
+
 func init() {
 }
 
@@ -99,10 +102,10 @@ func TestNewConfigENV(t *testing.T) {
 	err = os.WriteFile(
 		configPath,
 		[]byte("APP_FOO=foo\nAPP_BAR=bar\n"),
-		0644)
+		perms)
 	is.NoErr(err)
 
-	_, config, err := newConf(tmp, env)
+	_, config, err := newSingleConf(tmp, env)
 	is.NoErr(err)
 
 	is.Equal(config.Map["APP_FOO"], "foo")
@@ -127,10 +130,10 @@ func TestNewConfigJSON(t *testing.T) {
 	err = os.WriteFile(
 		configPath,
 		[]byte(`{"APP_FOO": "foo", "APP_BAR": "bar"}`),
-		0644)
+		perms)
 	is.NoErr(err)
 
-	_, config, err := newConf(tmp, env)
+	_, config, err := newSingleConf(tmp, env)
 	is.NoErr(err)
 	is.Equal(len(config.Keys), 2)
 	is.Equal(config.Map["APP_FOO"], "foo")
@@ -155,10 +158,10 @@ func TestNewConfigYAML(t *testing.T) {
 	err = os.WriteFile(
 		configPath,
 		[]byte("APP_FOO: foo\nAPP_BAR: bar\n"),
-		0644)
+		perms)
 	is.NoErr(err)
 
-	_, config, err := newConf(tmp, env)
+	_, config, err := newSingleConf(tmp, env)
 	is.NoErr(err)
 	is.Equal(len(config.Keys), 2)
 	is.Equal(config.Map["APP_FOO"], "foo")
@@ -166,6 +169,135 @@ func TestNewConfigYAML(t *testing.T) {
 
 	err = os.Remove(configPath)
 	is.NoErr(err)
+}
+
+func TestNewExtendedConf(t *testing.T) {
+	is := testutil.Setup(t)
+
+	tmp, err := os.MkdirTemp("", "mozey-config")
+	is.NoErr(err)
+	defer (func() {
+		_ = os.RemoveAll(tmp)
+	})()
+
+	env := "dev"
+
+	key0 := "APP_MAIN"
+	key1 := "APP_EXT1"
+	key2 := "APP_EXT2"
+	foo := "foo"
+
+	// main
+	configPath := filepath.Join(tmp, ".env")
+	err = os.WriteFile(
+		configPath, []byte(fmt.Sprintf("%s=%s0", key0, foo)), perms)
+	is.NoErr(err)
+
+	// ext1
+	ext1 := "ext1"
+	ext1Path := filepath.Join(tmp, ext1)
+	err = os.Mkdir(ext1Path, dirPerms)
+	is.NoErr(err)
+	configPath = filepath.Join(ext1Path, ".env")
+	err = os.WriteFile(
+		configPath, []byte(fmt.Sprintf("%s=%s1", key0, foo)), perms)
+	is.NoErr(err)
+
+	params := confParams{
+		appDir: tmp,
+		env:    env,
+		extend: []string{ext1},
+		merge:  true,
+	}
+	_, _, err = newExtendedConf(params)
+	is.True(errors.Is(err, ErrNotImplemented)) // Not implemented
+
+	params.merge = false
+	_, _, err = newExtendedConf(params)
+	is.True(errors.Is(err, ErrDuplicateKey(""))) // Duplicate key
+
+	err = os.WriteFile(
+		configPath, []byte(fmt.Sprintf("%s=%s1", key1, foo)), perms)
+	is.NoErr(err)
+
+	// ext2
+	ext2 := "ext2"
+	ext2Path := filepath.Join(tmp, ext2)
+	err = os.Mkdir(ext2Path, dirPerms)
+	is.NoErr(err)
+	configPath = filepath.Join(ext2Path, ".env")
+	err = os.WriteFile(
+		configPath, []byte(fmt.Sprintf("%s=%s2", key2, foo)), perms)
+	is.NoErr(err)
+
+	// Verify config is extended
+	params.extend = []string{ext1, ext2}
+	_, c, err := newExtendedConf(params)
+	is.NoErr(err)
+	is.Equal(c.Map[key0], fmt.Sprintf("%s0", foo))
+	is.Equal(c.Map[key1], fmt.Sprintf("%s1", foo))
+	is.Equal(c.Map[key2], fmt.Sprintf("%s2", foo))
+}
+
+func TestNewMergedConf(t *testing.T) {
+	is := testutil.Setup(t)
+
+	tmp, err := os.MkdirTemp("", "mozey-config")
+	is.NoErr(err)
+	defer (func() {
+		_ = os.RemoveAll(tmp)
+	})()
+
+	env := "dev"
+
+	key0 := "APP_MAIN"
+	key1 := "APP_EXT1"
+	foo := "foo"
+
+	// Create ext dir
+	ext1 := "ext1"
+	ext1Path := filepath.Join(tmp, ext1)
+	err = os.Mkdir(ext1Path, dirPerms)
+	is.NoErr(err)
+
+	params := confParams{
+		appDir: ext1Path,
+		env:    env,
+		extend: []string{},
+		merge:  true,
+	}
+	_, _, err = newMergedConf(params)
+	is.True(errors.Is(err, ErrParentNotFound)) // Parent config not found
+
+	// main
+	configPath := filepath.Join(tmp, ".env")
+	err = os.WriteFile(
+		configPath, []byte(fmt.Sprintf("%s=%s0", key0, foo)), perms)
+	is.NoErr(err)
+
+	// ext1
+	configPath = filepath.Join(ext1Path, ".env")
+	err = os.WriteFile(
+		configPath, []byte(fmt.Sprintf("%s=%s1", key0, foo)), perms)
+	is.NoErr(err)
+
+	params.extend = []string{ext1}
+	_, _, err = newMergedConf(params)
+	is.True(errors.Is(err, ErrNotImplemented)) // Not implemented
+
+	params.extend = []string{}
+	_, _, err = newMergedConf(params)
+	is.True(errors.Is(err, ErrDuplicateKey(""))) // Duplicate key
+
+	err = os.WriteFile(
+		configPath, []byte(fmt.Sprintf("%s=%s1", key1, foo)), perms)
+	is.NoErr(err)
+
+	// Verify config is merged
+	_, c, err := newMergedConf(params)
+	is.NoErr(err)
+	is.Equal(c.Map[key0], fmt.Sprintf("%s0", foo))
+	is.Equal(c.Map[key1], fmt.Sprintf("%s1", foo))
 }
 
 func TestCompareKeys(t *testing.T) {
@@ -183,12 +315,12 @@ func TestCompareKeys(t *testing.T) {
 	err = os.WriteFile(
 		filepath.Join(tmp, fmt.Sprintf("config.%v.json", env)),
 		[]byte(`{"APP_ONE": "1", "APP_FOO": "foo"}`),
-		0644)
+		perms)
 	is.NoErr(err)
 	err = os.WriteFile(
 		filepath.Join(tmp, fmt.Sprintf("config.%v.json", compare)),
 		[]byte(`{"APP_BAR": "bar", "APP_ONE": "1"}`),
-		0644)
+		perms)
 	is.NoErr(err)
 
 	in := &CmdIn{}
@@ -218,7 +350,7 @@ func TestUpdateConfigSingleJSON(t *testing.T) {
 	err = os.WriteFile(
 		filepath.Join(tmp, fmt.Sprintf("config.%v.json", env)),
 		[]byte(`{"APP_FOO": "foo", "APP_BAR": "bar"}`),
-		0644)
+		perms)
 	is.NoErr(err)
 
 	in := &CmdIn{}
@@ -261,13 +393,13 @@ func TestUpdateConfigMulti(t *testing.T) {
 	err = os.WriteFile(
 		filepath.Join(tmp, fmt.Sprintf("config.%v.json", env)),
 		[]byte(fmt.Sprintf(`{"APP_FOO": "%s"}`, test0)),
-		0644)
+		perms)
 	is.NoErr(err)
 	// Sample
 	err = os.WriteFile(
 		filepath.Join(tmp, fmt.Sprintf("sample.config.%v.json", env)),
 		[]byte(fmt.Sprintf(`{"APP_FOO": "%s"}`, test0)),
-		0644)
+		perms)
 	is.NoErr(err)
 
 	env = "prod"
@@ -275,13 +407,13 @@ func TestUpdateConfigMulti(t *testing.T) {
 	err = os.WriteFile(
 		filepath.Join(tmp, fmt.Sprintf("config.%v.json", env)),
 		[]byte(fmt.Sprintf(`{"APP_FOO": "%s"}`, test0)),
-		0644)
+		perms)
 	is.NoErr(err)
 	// Sample
 	err = os.WriteFile(
 		filepath.Join(tmp, fmt.Sprintf("sample.config.%v.json", env)),
 		[]byte(fmt.Sprintf(`{"APP_FOO": "%s"}`, test0)),
-		0644)
+		perms)
 	is.NoErr(err)
 
 	env = "stage-ec2"
@@ -289,13 +421,13 @@ func TestUpdateConfigMulti(t *testing.T) {
 	err = os.WriteFile(
 		filepath.Join(tmp, fmt.Sprintf("config.%v.json", env)),
 		[]byte(fmt.Sprintf(`{"APP_FOO": "%s"}`, test0)),
-		0644)
+		perms)
 	is.NoErr(err)
 	// Sample
 	err = os.WriteFile(
 		filepath.Join(tmp, fmt.Sprintf("sample.config.%v.json", env)),
 		[]byte(fmt.Sprintf(`{"APP_FOO": "%s"}`, test0)),
-		0644)
+		perms)
 	is.NoErr(err)
 
 	var in *CmdIn
@@ -421,7 +553,7 @@ func TestSetEnv(t *testing.T) {
 	err = os.WriteFile(
 		filepath.Join(tmp, fmt.Sprintf("config.%v.json", env)),
 		[]byte(`{"APP_BAR": "bar"}`),
-		0644)
+		perms)
 	is.NoErr(err)
 
 	err = os.Setenv("APP_FOO", "foo")
@@ -462,7 +594,7 @@ func TestCSV(t *testing.T) {
 	err = os.WriteFile(
 		filepath.Join(tmp, fmt.Sprintf("config.%v.json", env)),
 		[]byte(`{"APP_FOO": "foo", "APP_BAR": "bar"}`),
-		0644)
+		perms)
 	is.NoErr(err)
 
 	in := &CmdIn{}
@@ -500,7 +632,7 @@ func TestBase64(t *testing.T) {
 	err = os.WriteFile(
 		filepath.Join(tmp, fmt.Sprintf("config.%v.json", env)),
 		[]byte(`{"APP_FOO": "foo", "APP_BAR": "bar"}`),
-		0644)
+		perms)
 	is.NoErr(err)
 
 	in := &CmdIn{}
@@ -536,7 +668,7 @@ func TestGet(t *testing.T) {
 	err = os.WriteFile(
 		filepath.Join(tmp, fmt.Sprintf("config.%v.json", env)),
 		[]byte(`{"APP_FOO": "foo", "APP_BAR": "bar"}`),
-		0644)
+		perms)
 	is.NoErr(err)
 
 	in := &CmdIn{}
@@ -639,11 +771,9 @@ func BenchmarkExecuteTemplate(b *testing.B) {
 
 // BenchmarkExecuteTemplateSprintf demonstrates that using sprintf
 // is much faster than using text/template.
-// However, sprintf does not support named variables.
-// Changing the order of variables for TEMPLATE_* keys in config.ENV.json files
-// must not make ExecTemplate* methods return different values.
-// Therefore going with text/template,
-// avoid calling ExecTemplate* methods inside loops for now.
+// However, sprintf does not support named variables,
+// and changing the order of variables for _TEMPLATE keys in config files
+// must not break previously generated code.
 // TODO Investigate regex replace performance vs text/template
 // https://github.com/mozey/config/issues/14
 func BenchmarkExecuteTemplateSprintf(b *testing.B) {
@@ -673,32 +803,32 @@ func TestGetEnvs(t *testing.T) {
 	err = os.WriteFile(
 		filepath.Join(tmp, "config.dev.json"),
 		[]byte(`{}`),
-		0644)
+		perms)
 	is.NoErr(err)
 	err = os.WriteFile(
 		filepath.Join(tmp, "sample.config.dev.json"),
 		[]byte(`{}`),
-		0644)
+		perms)
 	is.NoErr(err)
 	err = os.WriteFile(
 		filepath.Join(tmp, "config.prod.json"),
 		[]byte(`{}`),
-		0644)
+		perms)
 	is.NoErr(err)
 	err = os.WriteFile(
 		filepath.Join(tmp, "sample.config.prod.json"),
 		[]byte(`{}`),
-		0644)
+		perms)
 	is.NoErr(err)
 	err = os.WriteFile(
 		filepath.Join(tmp, "config.stage-ec2.json"),
 		[]byte(`{}`),
-		0644)
+		perms)
 	is.NoErr(err)
 	err = os.WriteFile(
 		filepath.Join(tmp, "sample.config.stage-ec2.json"),
 		[]byte(`{}`),
-		0644)
+		perms)
 	is.NoErr(err)
 
 	envs, err := getEnvs(tmp, false)

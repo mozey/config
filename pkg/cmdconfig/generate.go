@@ -12,6 +12,8 @@ import (
 	"github.com/pkg/errors"
 )
 
+const TokenTemplateKey = "_TEMPLATE"
+
 type GenerateKey struct {
 	KeyPrefix  string
 	KeyPrivate string
@@ -48,7 +50,12 @@ func NewGenerateData(in *CmdIn) (data *GenerateData, err error) {
 		AppDir: in.AppDir,
 	}
 
-	_, config, err := newConf(in.AppDir, in.Env)
+	_, config, err := newConf(confParams{
+		appDir: in.AppDir,
+		env:    in.Env,
+		extend: in.Extend,
+		merge:  in.Merge,
+	})
 	if err != nil {
 		return data, err
 	}
@@ -78,7 +85,7 @@ func NewGenerateData(in *CmdIn) (data *GenerateData, err error) {
 		data.KeyMap[formattedKey] = i
 
 		// If template key then append to templateKeys
-		if strings.Contains(keyWithPrefix, "_TEMPLATE") {
+		if strings.Contains(keyWithPrefix, TokenTemplateKey) {
 			templateKeys = append(templateKeys, generateKey)
 		}
 	}

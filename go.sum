@@ -3,6 +3,8 @@ github.com/davecgh/go-spew v1.1.0 h1:ZDRjVQ15GmhC3fiQ8ni8+OwkZQO4DARzQgrnXU1Liz8
 github.com/davecgh/go-spew v1.1.0/go.mod h1:J7Y8YcW2NihsgmVo/mv3lAwl/skON4iLHjSsI+c5H38=
 github.com/matryer/is v1.4.1 h1:55ehd8zaGABKLXQUe2awZ99BD/PTc2ls+KV/dXphgEQ=
 github.com/matryer/is v1.4.1/go.mod h1:8I/i5uYgLzgsgEloJE1U6xx5HkBQpAZvepWuujKwMRU=
+github.com/mozey/errors v0.1.0 h1:4l0JnGxMfCEvjkbpLzYZL6x/wB/nSS4tvqAukOQ9hF8=
+github.com/mozey/errors v0.1.0/go.mod h1:xXktTJ15pTUz6cqpnQapGs65BxKopOyP0cxuLzvV+OY=
 github.com/mozey/logutil v0.0.0-20201020133158-b1ec1d809337 h1:0iMJP5D74slEKMSGh/4iGecxEfnpPjC/s7GdIaKX8gU=
 github.com/mozey/logutil v0.0.0-20201020133158-b1ec1d809337/go.mod h1:4rTh4exS/DDt+79GGkvXU5/Hs7zWrFTMBi+pCgg8INk=
 github.com/pkg/errors v0.8.1/go.mod h1:bwawxfHBFNV+L2hUp1rHADufV3IMtnDRdf1r5NINEl0=
