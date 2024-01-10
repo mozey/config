@@ -87,6 +87,8 @@ func ParseFlags(version string) *CmdIn {
 	in.Extend = ArgMap{}
 	flag.Var(&in.Extend,
 		FlagExtend, "Extend config")
+	flag.BoolVar(&in.Merge,
+		FlagMerge, false, "Merge with parent config")
 
 	flag.Parse()
 
