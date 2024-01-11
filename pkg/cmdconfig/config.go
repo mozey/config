@@ -414,6 +414,11 @@ func newConf(params confParams) (
 		return configPaths, c, err
 	}
 
+	if len(params.extend) > 0 && params.merge {
+		// Simultaneous extend and merge not supported
+		return configPaths, c, ErrNotImplemented
+	}
+
 	if len(params.extend) > 0 {
 		// Extend config
 		return newExtendedConf(extConfParams{

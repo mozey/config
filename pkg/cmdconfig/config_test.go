@@ -182,15 +182,16 @@ func TestNewExtendedConf(t *testing.T) {
 
 	env := "dev"
 
-	key0 := "APP_MAIN"
-	key1 := "APP_EXT1"
-	key2 := "APP_EXT2"
+	prefix := "APP_"
+	key0 := fmt.Sprintf("%sMAIN", prefix)
+	key1 := fmt.Sprintf("%sEXT1", prefix)
+	key2 := fmt.Sprintf("%sEXT2", prefix)
 	foo := "foo"
 
 	// main
-	configPath := filepath.Join(tmp, ".env")
+	mainPath := filepath.Join(tmp, ".env")
 	err = os.WriteFile(
-		configPath, []byte(fmt.Sprintf("%s=%s0", key0, foo)), perms)
+		mainPath, []byte(fmt.Sprintf("%s=%s0", key0, foo)), perms)
 	is.NoErr(err)
 
 	// ext1
@@ -198,7 +199,7 @@ func TestNewExtendedConf(t *testing.T) {
 	ext1Path := filepath.Join(tmp, ext1)
 	err = os.Mkdir(ext1Path, dirPerms)
 	is.NoErr(err)
-	configPath = filepath.Join(ext1Path, ".env")
+	configPath := filepath.Join(ext1Path, ".env")
 	err = os.WriteFile(
 		configPath, []byte(fmt.Sprintf("%s=%s1", key0, foo)), perms)
 	is.NoErr(err)
@@ -230,7 +231,8 @@ func TestNewExtendedConf(t *testing.T) {
 	is.NoErr(err)
 
 	// Verify config is extended
-	params.extend = []string{ext1, ext2}
+	extend := []string{ext1, ext2}
+	params.extend = extend
 	configPaths, c, err := newExtendedConf(params)
 	is.NoErr(err)
 	is.Equal(c.Map[key0], fmt.Sprintf("%s0", foo))
@@ -240,6 +242,40 @@ func TestNewExtendedConf(t *testing.T) {
 	is.Equal(filepath.Base(configPaths[0]), ".env")
 	is.Equal(filepath.Base(filepath.Dir(configPaths[1])), ext1)
 	is.Equal(filepath.Base(filepath.Dir(configPaths[2])), ext2)
+
+	// .........................................................................
+	// Extensions may be listed in the config file
+	// https://github.com/mozey/config/pull/51
+
+	buf := bytes.NewBufferString("")
+	buf.Write([]byte(fmt.Sprintf("%s=%s0", key0, foo)))
+	buf.WriteString("\n")
+	buf.Write([]byte(fmt.Sprintf(
+		"%s=%s", KeyPrefixExtensions(prefix), strings.Join(extend, ","))))
+	buf.WriteString("\n")
+	buf.Write([]byte(fmt.Sprintf(
+		"%s=%s", KeyExtensionsDir(prefix), tmp)))
+
+	fmt.Println(buf.String())
+	err = os.WriteFile(mainPath, buf.Bytes(), perms)
+	is.NoErr(err)
+
+	configPaths, c, err = newConf(confParams{
+		prefix: prefix,
+		appDir: tmp,
+		env:    env,
+		extend: extend,
+		merge:  false,
+	})
+	is.NoErr(err)
+	is.Equal(c.Map[key0], fmt.Sprintf("%s0", foo))
+	is.Equal(c.Map[key1], fmt.Sprintf("%s1", foo))
+	is.Equal(c.Map[key2], fmt.Sprintf("%s2", foo))
+	is.Equal(len(configPaths), 3)
+	is.Equal(filepath.Base(configPaths[0]), ".env")
+	is.Equal(filepath.Base(filepath.Dir(configPaths[1])), ext1)
+	is.Equal(filepath.Base(filepath.Dir(configPaths[2])), ext2)
+
 }
 
 func TestNewMergedConf(t *testing.T) {
