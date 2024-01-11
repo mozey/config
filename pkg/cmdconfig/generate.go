@@ -13,15 +13,15 @@ import (
 )
 
 func KeyPrefixTemplate(prefix string) string {
-	return fmt.Sprintf("%s_TEMPLATE", prefix)
+	return fmt.Sprintf("%sTEMPLATE", prefix)
 }
 
 func KeyPrefixExtensions(prefix string) string {
-	return fmt.Sprintf("%s_X", prefix)
+	return fmt.Sprintf("%sX", prefix)
 }
 
 func KeyExtensionsDir(prefix string) string {
-	return fmt.Sprintf("%s_X_DIR", prefix)
+	return fmt.Sprintf("%sX_DIR", prefix)
 }
 
 type GenerateKey struct {
