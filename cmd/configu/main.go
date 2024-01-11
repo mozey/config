@@ -10,7 +10,7 @@ import (
 // For custom builds, the version can be overwritten with ldflags, see
 // "Golang compile environment variable into binary"
 // https://stackoverflow.com/a/47665780/639133
-var version string = "v0.11.2"
+var version string = "v0.12.0"
 
 func main() {
 	logutil.SetupLogger(true)
