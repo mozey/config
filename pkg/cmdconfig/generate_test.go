@@ -42,7 +42,9 @@ func TestGenerateHelpersPrint(t *testing.T) {
 	is.Equal(0, out.ExitCode)
 	is.Equal(3, len(out.Files)) // Unexpected number of files
 
+	is.Equal(len(out.Files), 3) // Count generated file
 	for _, file := range out.Files {
+		is.True(strings.TrimSpace(file.Path) != "") // File path empty
 		fileName := filepath.Base(file.Path)
 		os.WriteFile(
 			filepath.Join("testdata", "compare", fileName),
@@ -110,8 +112,7 @@ func TestGenerateHelpersSave(t *testing.T) {
 	is.Equal(3, len(out.Files)) // Unexpected number of files
 
 	// Write the files
-	// TODO in.Process calls fmt.Println,
-	// temporarily capture stdout to avoid cluttering test output?
+	// TODO in.Process calls fmt.Println, capture stdout and verify output?
 	// See https://github.com/mozey/go-capturer
 	exitCode, err := in.Process(out)
 	is.NoErr(err)
