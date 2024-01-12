@@ -250,13 +250,15 @@ func TestNewExtendedConf(t *testing.T) {
 	buf := bytes.NewBufferString("")
 	buf.Write([]byte(fmt.Sprintf("%s=%s0", key0, foo)))
 	buf.WriteString("\n")
+	// E.g. APP_X=ext1,ext2
 	buf.Write([]byte(fmt.Sprintf(
 		"%s=%s", KeyPrefixExtensions(prefix), strings.Join(extend, ","))))
 	buf.WriteString("\n")
+	// APP_X_DIR=/path/to/tmp
 	buf.Write([]byte(fmt.Sprintf(
 		"%s=%s", KeyExtensionsDir(prefix), tmp)))
 
-	fmt.Println(buf.String())
+	// fmt.Println(buf.String())
 	err = os.WriteFile(mainPath, buf.Bytes(), perms)
 	is.NoErr(err)
 
@@ -268,6 +270,7 @@ func TestNewExtendedConf(t *testing.T) {
 		merge:  false,
 	})
 	is.NoErr(err)
+	// log.Info().Interface("c.Map", c.Map).Msg("")
 	is.Equal(c.Map[key0], fmt.Sprintf("%s0", foo))
 	is.Equal(c.Map[key1], fmt.Sprintf("%s1", foo))
 	is.Equal(c.Map[key2], fmt.Sprintf("%s2", foo))
