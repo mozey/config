@@ -28,3 +28,7 @@
 # README example generates config helper here:
 /pkg/config
 /pkg/cmdconfig/testdata/compare
+
+# Test loading extensions
+/pkg/ext
+

@@ -448,11 +448,15 @@ func newConf(params confParams) (
 			if !ok {
 				return configPaths, c, ErrMissingKey(extDirKey)
 			}
-			parts := strings.Split(key, ",")
+			extensions, ok := c.Map[key]
+			if !ok {
+				return configPaths, c, ErrMissingKey(key)
+			}
+			parts := strings.Split(extensions, ",")
 			extend := make([]string, 0)
 			for _, extension := range parts {
-				params.extend = append(
-					params.extend, filepath.Join(extDir, extension))
+				extend = append(
+					extend, filepath.Join(extDir, extension))
 			}
 			return newExtendedConf(extConfParams{
 				mainConf:    c,
@@ -751,7 +755,13 @@ type envKeys map[string]bool
 
 // setEnv commands to be executed in the shell
 func setEnv(in *CmdIn) (buf *bytes.Buffer, files []File, err error) {
-	_, config, err := newSingleConf(in.AppDir, in.Env)
+	_, config, err := newConf(confParams{
+		prefix: in.Prefix,
+		appDir: in.AppDir,
+		env:    in.Env,
+		// extend and merge is not set here, however,
+		// extensions may be listed in the config file
+	})
 	if err != nil {
 		return buf, files, err
 	}

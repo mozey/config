@@ -255,8 +255,10 @@ func TestNewExtendedConf(t *testing.T) {
 		"%s=%s", KeyPrefixExtensions(prefix), strings.Join(extend, ","))))
 	buf.WriteString("\n")
 	// APP_X_DIR=/path/to/tmp
+	// In this case app and extension dir is the same
 	buf.Write([]byte(fmt.Sprintf(
-		"%s=%s", KeyExtensionsDir(prefix), tmp)))
+		"%s=%s", KeyExtensionsDir(prefix), ".")))
+	buf.WriteString("\n")
 
 	// fmt.Println(buf.String())
 	err = os.WriteFile(mainPath, buf.Bytes(), perms)
@@ -266,10 +268,13 @@ func TestNewExtendedConf(t *testing.T) {
 		prefix: prefix,
 		appDir: tmp,
 		env:    env,
-		extend: extend,
+		// Do not pass in extend or merge,
+		// make the constructor iterate over the keys
+		extend: make([]string, 0),
 		merge:  false,
 	})
 	is.NoErr(err)
+	// log.Info().Interface("configPaths", configPaths).Msg("")
 	// log.Info().Interface("c.Map", c.Map).Msg("")
 	is.Equal(c.Map[key0], fmt.Sprintf("%s0", foo))
 	is.Equal(c.Map[key1], fmt.Sprintf("%s1", foo))
