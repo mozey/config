@@ -57,6 +57,8 @@ import (
 // {{.KeyPrefix}}
 var {{.KeyPrivate}} string{{end}}
 
+{{range .Keys}}
+const Key{{.Key}} = "{{.KeyPrefix}}"{{end}}
 
 // Config fields correspond to config file keys less the prefix
 type Config struct {
