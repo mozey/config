@@ -53,12 +53,13 @@ import (
 	"path/filepath"
 )
 
+// KeyPrefix is not made publicly available on this package,
+// users must use the getter or setter methods.
+// This package must not change the config file
+
 {{range .Keys}}
 // {{.KeyPrefix}}
 var {{.KeyPrivate}} string{{end}}
-
-{{range .Keys}}
-const Key{{.Key}} = "{{.KeyPrefix}}"{{end}}
 
 // Config fields correspond to config file keys less the prefix
 type Config struct {
