@@ -364,7 +364,6 @@ Keys are case sensitive, and it's advised to make keys **all uppercase**.
 
 Use (uppercase) **SNAKE_CASE**.
 
-**TODO** Review this
 Assuming the default key prefix `APP_`, to avoid un-defined behaviour when generating package code, **do not start keys with**
 - `APP_EXEC_TEMPLATE_`
 - `APP_FN_`
@@ -373,3 +372,7 @@ Assuming the default key prefix `APP_`, to avoid un-defined behaviour when gener
 In addition to the `APP_` prefix, the configu command also supports additional prefixes like `AWS_`.
 
 The `APP_DIR` key is set to the working directory when toggling env, any value specified for this key in the config file will be overridden
+
+Extended config may be defined in additional config files. This behavior is enabled with the `extend` CLI flag. Or, with the key `APP_X` (a CSV list of extension dir names), and `APP_X_DIR` (the root dir for extensions)
+
+**TODO** Expand on how to use extensions, also document how to merge config

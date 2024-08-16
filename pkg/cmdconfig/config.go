@@ -351,8 +351,11 @@ func ReadConfigFile(appDir, env string) (configPath string, b []byte, err error)
 	}
 
 	if !found {
-		return configPath, b, errors.Errorf(
+		err = errors.Errorf(
 			"config file not found for env %s", env)
+		log.Error().Stack().Err(err).
+			Str("appDir", appDir).Msg("")
+		return configPath, b, err
 	}
 	// log.Debug().Str("config_path", configPath).Msg("Found")
 
