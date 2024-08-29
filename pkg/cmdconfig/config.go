@@ -358,7 +358,7 @@ func ReadConfigFile(appDir, env string) (configPath string, b []byte, err error)
 		_, err := os.Stat(configPath)
 		if err != nil {
 			if os.IsNotExist(err) {
-				log.Debug().Str("config_path", configPath).Msg("Not found")
+				// log.Debug().Str("config_path", configPath).Msg("Not found")
 				continue
 			} else {
 				return configPath, b, errors.WithStack(err)
