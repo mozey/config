@@ -67,7 +67,7 @@ func TestFileTypes(t *testing.T) {
 	}
 	for _, configPath := range configPaths {
 		fileType := filepath.Ext(configPath)
-		is.True(FileTypeENV1 == fileType || FileTypeSH == fileType)
+		is.True(FileTypeENV == fileType || FileTypeSH == fileType)
 	}
 	configPaths = []string{
 		"config.json",

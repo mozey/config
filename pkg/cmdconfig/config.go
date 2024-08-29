@@ -259,7 +259,7 @@ func samplePrefix() string {
 	return fmt.Sprintf("%s.", Sample)
 }
 
-const FileTypeENV1 = ".env"  // e.g. .env
+const FileTypeENV = ".env"   // e.g. .env
 const FileTypeSH = ".sh"     // e.g. .env.prod.sh
 const FileTypeJSON = ".json" // e.g. config.json
 const FileTypeYAML = ".yaml" // e.g. config.yaml
@@ -288,7 +288,7 @@ func getConfigFilePath(appDir, env, fileType string) (string, error) {
 	}
 
 	// Text editors usually do syntax highlighting for ".env" files
-	if fileType == FileTypeENV1 && sample == "" && env == "" {
+	if fileType == FileTypeENV && sample == "" && env == "" {
 		return filepath.Join(appDir, ".env"), nil
 	}
 
@@ -318,12 +318,12 @@ func getConfigFilePaths(appDir, env string) (paths []string, err error) {
 
 	for _, fileType := range []string{
 		// Load precedence
-		FileTypeENV1,
+		FileTypeENV,
 		FileTypeSH,
 		FileTypeJSON,
 		FileTypeYAML,
 	} {
-		if fileType != FileTypeENV1 {
+		if fileType != FileTypeENV {
 			configPath, err := getConfigFilePath(appDir, env, fileType)
 			if err != nil {
 				return paths, err
@@ -405,7 +405,7 @@ func loadConf(appDir string, env string) (
 	// The config file must have a flat key value structure
 	fileType := filepath.Ext(configPath)
 	var UnmarshalErr error
-	if fileType == FileTypeENV1 || fileType == FileTypeSH {
+	if fileType == FileTypeENV || fileType == FileTypeSH {
 		c.Map, UnmarshalErr = UnmarshalENV(b)
 	} else if fileType == FileTypeJSON {
 		UnmarshalErr = json.Unmarshal(b, &c.Map)
@@ -693,7 +693,7 @@ func refreshConfigByEnv(
 	fileType := filepath.Ext(configPaths[0])
 	var MarshalErr error
 	dotFormat := fmt.Sprintf(".%s", format)
-	if dotFormat == FileTypeENV1 ||
+	if dotFormat == FileTypeENV ||
 		dotFormat == FileTypeSH ||
 		dotFormat == FileTypeJSON ||
 		dotFormat == FileTypeYAML {
@@ -704,7 +704,7 @@ func refreshConfigByEnv(
 			return configPaths, b, err
 		}
 	}
-	if fileType == FileTypeENV1 || fileType == FileTypeSH {
+	if fileType == FileTypeENV || fileType == FileTypeSH {
 		b, MarshalErr = MarshalENV(conf)
 	} else if fileType == FileTypeJSON {
 		b, MarshalErr = json.MarshalIndent(conf.Map, "", "    ")
