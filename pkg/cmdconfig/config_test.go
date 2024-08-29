@@ -26,6 +26,8 @@ import (
 const dirPerms = 0700 // Same as MkdirTemp
 const perms = 0600    // Read and write but no execute
 
+const EnvProd = "prod"
+
 func init() {
 }
 
@@ -65,7 +67,7 @@ func TestFileTypes(t *testing.T) {
 	}
 	for _, configPath := range configPaths {
 		fileType := filepath.Ext(configPath)
-		is.Equal(FileTypeEnv, fileType)
+		is.True(FileTypeENV == fileType || FileTypeSH == fileType)
 	}
 	configPaths = []string{
 		"config.json",
@@ -96,7 +98,7 @@ func TestNewConfigENV(t *testing.T) {
 		_ = os.RemoveAll(tmp)
 	})()
 
-	env := "dev"
+	env := EnvDev
 
 	configPath := filepath.Join(tmp, ".env")
 	err = os.WriteFile(
@@ -124,7 +126,7 @@ func TestNewConfigJSON(t *testing.T) {
 		_ = os.RemoveAll(tmp)
 	})()
 
-	env := "dev"
+	env := EnvDev
 
 	configPath := filepath.Join(tmp, "config.json")
 	err = os.WriteFile(
@@ -152,7 +154,7 @@ func TestNewConfigYAML(t *testing.T) {
 		_ = os.RemoveAll(tmp)
 	})()
 
-	env := "dev"
+	env := EnvDev
 
 	configPath := filepath.Join(tmp, "config.yaml")
 	err = os.WriteFile(
@@ -180,7 +182,7 @@ func TestNewExtendedConf(t *testing.T) {
 		_ = os.RemoveAll(tmp)
 	})()
 
-	env := "dev"
+	env := EnvDev
 
 	prefix := "APP_"
 	key0 := fmt.Sprintf("%sMAIN", prefix)
@@ -295,7 +297,7 @@ func TestNewMergedConf(t *testing.T) {
 		_ = os.RemoveAll(tmp)
 	})()
 
-	env := "dev"
+	env := EnvDev
 
 	key0 := "APP_MAIN"
 	key1 := "APP_EXT1"
@@ -360,8 +362,8 @@ func TestCompareKeys(t *testing.T) {
 		_ = os.RemoveAll(tmp)
 	})()
 
-	env := "dev"
-	compare := "prod"
+	env := EnvDev
+	compare := EnvProd
 
 	err = os.WriteFile(
 		filepath.Join(tmp, fmt.Sprintf("config.%v.json", env)),
@@ -396,7 +398,7 @@ func TestUpdateConfigSingleJSON(t *testing.T) {
 		_ = os.RemoveAll(tmp)
 	})()
 
-	env := "dev"
+	env := EnvDev
 
 	err = os.WriteFile(
 		filepath.Join(tmp, fmt.Sprintf("config.%v.json", env)),
@@ -439,7 +441,7 @@ func TestUpdateConfigMulti(t *testing.T) {
 	// Create config files...
 	test0 := "xxx"
 
-	env := "dev"
+	env := EnvDev
 	// Non-sample
 	err = os.WriteFile(
 		filepath.Join(tmp, fmt.Sprintf("config.%v.json", env)),
@@ -453,7 +455,7 @@ func TestUpdateConfigMulti(t *testing.T) {
 		perms)
 	is.NoErr(err)
 
-	env = "prod"
+	env = EnvProd
 	// Non-sample
 	err = os.WriteFile(
 		filepath.Join(tmp, fmt.Sprintf("config.%v.json", env)),
@@ -489,7 +491,7 @@ func TestUpdateConfigMulti(t *testing.T) {
 	in = &CmdIn{}
 	in.AppDir = tmp
 	in.Prefix = "APP_"
-	in.Env = "dev"
+	in.Env = EnvDev
 	in.Keys = ArgMap{"APP_FOO"}
 	in.Values = ArgMap{test1}
 	out, err = Cmd(in)
@@ -599,7 +601,7 @@ func TestSetEnv(t *testing.T) {
 		_ = os.RemoveAll(tmp)
 	})()
 
-	env := "dev"
+	env := EnvDev
 
 	err = os.WriteFile(
 		filepath.Join(tmp, fmt.Sprintf("config.%v.json", env)),
@@ -640,7 +642,7 @@ func TestCSV(t *testing.T) {
 		_ = os.RemoveAll(tmp)
 	})()
 
-	env := "dev"
+	env := EnvDev
 
 	err = os.WriteFile(
 		filepath.Join(tmp, fmt.Sprintf("config.%v.json", env)),
@@ -678,7 +680,7 @@ func TestBase64(t *testing.T) {
 		_ = os.RemoveAll(tmp)
 	})()
 
-	env := "dev"
+	env := EnvDev
 
 	err = os.WriteFile(
 		filepath.Join(tmp, fmt.Sprintf("config.%v.json", env)),
@@ -714,7 +716,7 @@ func TestGet(t *testing.T) {
 		_ = os.RemoveAll(tmp)
 	})()
 
-	env := "dev"
+	env := EnvDev
 
 	err = os.WriteFile(
 		filepath.Join(tmp, fmt.Sprintf("config.%v.json", env)),
@@ -884,7 +886,7 @@ func TestGetEnvs(t *testing.T) {
 
 	envs, err := getEnvs(tmp, false)
 	is.NoErr(err)
-	is.Equal([]string{"dev", "prod", "stage-ec2"}, envs)
+	is.Equal([]string{EnvDev, EnvProd, "stage-ec2"}, envs)
 
 	envs, err = getEnvs(tmp, true)
 	is.NoErr(err)

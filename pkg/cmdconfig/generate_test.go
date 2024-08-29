@@ -28,7 +28,7 @@ func TestGenerateHelpersPrint(t *testing.T) {
 	in := &CmdIn{}
 	in.DryRun = true // Do not write files to disk
 	in.Prefix = "APP_"
-	in.Env = "dev"
+	in.Env = EnvDev
 
 	// Path to generate config helpers is not used since dry run is set.
 	// Compare with TestGenerateHelpers
@@ -66,7 +66,7 @@ func TestGenerateHelpersPrint(t *testing.T) {
 	// now check the generated code works as expected...
 	err = os.Setenv("APP_DIR", filepath.Join(appDir, in.Generate))
 	is.NoErr(err)
-	c, err := config.LoadFile("dev")
+	c, err := config.LoadFile(EnvDev)
 	is.NoErr(err)
 	err = os.Setenv("APP_DIR", appDir)
 	is.NoErr(err)
@@ -90,7 +90,7 @@ func TestGenerateHelpersSave(t *testing.T) {
 	in.AppDir = tmp
 	in.DryRun = false // Test writing files to disk
 	in.Prefix = "APP_"
-	in.Env = "dev"
+	in.Env = EnvDev
 
 	// Convention is to keep the helpers in YOUR_PROJECTS_APP_DIR/pkg/config
 	in.Generate = filepath.Join("pkg", "config")
