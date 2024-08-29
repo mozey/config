@@ -289,7 +289,12 @@ func getConfigFilePath(appDir, env, fileType string) (string, error) {
 
 	// Text editors usually do syntax highlighting for ".env" files
 	if fileType == FileTypeENV1 && sample == "" && env == "" {
-		return ".env", nil
+		return filepath.Join(appDir, ".env"), nil
+	}
+
+	// If env is not empty, add dot separator.
+	if env != "" {
+		env = fmt.Sprintf(".%s", env)
 	}
 
 	// For environements other than dev, or sample files,
@@ -299,11 +304,6 @@ func getConfigFilePath(appDir, env, fileType string) (string, error) {
 		fileNameFormat := "%v.env%v%v"
 		return filepath.Join(
 			appDir, fmt.Sprintf(fileNameFormat, sample, env, fileType)), nil
-	}
-
-	// If env is not empty, add dot separator.
-	if env != "" {
-		env = fmt.Sprintf(".%s", env)
 	}
 
 	// E.g. config.dev.json or sample.config.dev.json
@@ -323,16 +323,18 @@ func getConfigFilePaths(appDir, env string) (paths []string, err error) {
 		FileTypeJSON,
 		FileTypeYAML,
 	} {
-		configPath, err := getConfigFilePath(appDir, env, fileType)
-		if err != nil {
-			return paths, err
+		if fileType != FileTypeENV1 {
+			configPath, err := getConfigFilePath(appDir, env, fileType)
+			if err != nil {
+				return paths, err
+			}
+			paths = append(paths, configPath)
 		}
-		paths = append(paths, configPath)
 
 		if env == EnvDev {
 			// For the dev config file, the env is optional, i.e.
 			// "config.dev.json" or "config.json" are both valid dev config files
-			configPath, err = getConfigFilePath(appDir, "", fileType)
+			configPath, err := getConfigFilePath(appDir, "", fileType)
 			if err != nil {
 				return paths, err
 			}
@@ -349,6 +351,8 @@ func ReadConfigFile(appDir, env string) (configPath string, b []byte, err error)
 	if err != nil {
 		return configPath, b, err
 	}
+	// log.Debug().Interface("paths", paths).Msg("ReadConfigFile")
+
 	// Don't change scope of configPath variable!
 	for _, configPath = range paths {
 		_, err := os.Stat(configPath)
