@@ -16,6 +16,8 @@ import (
 	"gopkg.in/yaml.v2"
 )
 
+const EnvDev = "dev"
+
 // .............................................................................
 
 // conf file attributes.
@@ -241,8 +243,9 @@ func getEnvs(appDir string, samples listSamples) (envs []string, err error) {
 		matches := r.FindStringSubmatch(baseName)
 		if len(matches) == 2 {
 			env := matches[1]
-			if strings.HasPrefix(baseName, SamplePrefix) {
-				env = fmt.Sprintf("%s%s", SamplePrefix, env)
+			samplePrefix := samplePrefix()
+			if strings.HasPrefix(baseName, samplePrefix) {
+				env = fmt.Sprintf("%s%s", samplePrefix, env)
 			}
 			envs = append(envs, env)
 		}
@@ -250,9 +253,14 @@ func getEnvs(appDir string, samples listSamples) (envs []string, err error) {
 	return envs, nil
 }
 
-const SamplePrefix = "sample."
+const Sample = "sample"
 
-const FileTypeEnv = ".env"   // e.g. .env
+func samplePrefix() string {
+	return fmt.Sprintf("%s.", Sample)
+}
+
+const FileTypeENV1 = ".env"  // e.g. .env
+const FileTypeSH = ".sh"     // e.g. .env.prod.sh
 const FileTypeJSON = ".json" // e.g. config.json
 const FileTypeYAML = ".yaml" // e.g. config.yaml
 
@@ -268,29 +276,40 @@ func getConfigFilePath(appDir, env, fileType string) (string, error) {
 		}
 	}
 
-	// Strip SamplePrefix from env
-	sample := "" // e.g. config.dev.json
-	if strings.Contains(env, SamplePrefix) {
-		sample = SamplePrefix
-		env = strings.Replace(env, SamplePrefix, "", 1)
+	// Strip sample prefix from env
+	env = strings.TrimSpace(env)
+	sample := ""
+	samplePrefix := samplePrefix()
+	if strings.Contains(env, samplePrefix) {
+		sample = Sample
+		env = strings.Replace(env, samplePrefix, "", 1)
+	} else {
+		samplePrefix = ""
+	}
+
+	// Text editors usually do syntax highlighting for ".env" files
+	if fileType == FileTypeENV1 && sample == "" && env == "" {
+		return ".env", nil
+	}
+
+	// For environements other than dev, or sample files,
+	// the filename must end with ".sh"
+	if fileType == FileTypeSH {
+		// E.g. .env.prod.sh or sample.env.prod.sh
+		fileNameFormat := "%v.env%v%v"
+		return filepath.Join(
+			appDir, fmt.Sprintf(fileNameFormat, sample, env, fileType)), nil
 	}
 
 	// If env is not empty, add dot separator.
-	if fileType != FileTypeEnv {
-		if strings.TrimSpace(env) != "" {
-			env = fmt.Sprintf(".%s", env)
-		}
+	if env != "" {
+		env = fmt.Sprintf(".%s", env)
 	}
 
-	// Format for FileTypeEnv is slightly different,
-	// it does not contain the word "config" (by popular convention)
-	fileNameFormat := "%vconfig%v%v" // e.g. sample.config.dev.json
-	if fileType == FileTypeEnv {
-		fileNameFormat = "%v%v%v" // e.g. sample.dev.env
-	}
-
+	// E.g. config.dev.json or sample.config.dev.json
+	fileNameFormat := "%vconfig%v%v"
 	return filepath.Join(
-		appDir, fmt.Sprintf(fileNameFormat, sample, env, fileType)), nil
+		appDir, fmt.Sprintf(fileNameFormat, samplePrefix, env, fileType)), nil
 }
 
 // getConfigFilePaths defines the load precedence
@@ -299,8 +318,9 @@ func getConfigFilePaths(appDir, env string) (paths []string, err error) {
 
 	for _, fileType := range []string{
 		// Load precedence
+		FileTypeENV1,
+		FileTypeSH,
 		FileTypeJSON,
-		FileTypeEnv,
 		FileTypeYAML,
 	} {
 		configPath, err := getConfigFilePath(appDir, env, fileType)
@@ -309,13 +329,15 @@ func getConfigFilePaths(appDir, env string) (paths []string, err error) {
 		}
 		paths = append(paths, configPath)
 
-		// For the dev config file, the env is optional, i.e.
-		// "config.dev.json" or "config.json" are both valid dev config files
-		configPath, err = getConfigFilePath(appDir, "", fileType)
-		if err != nil {
-			return paths, err
+		if env == EnvDev {
+			// For the dev config file, the env is optional, i.e.
+			// "config.dev.json" or "config.json" are both valid dev config files
+			configPath, err = getConfigFilePath(appDir, "", fileType)
+			if err != nil {
+				return paths, err
+			}
+			paths = append(paths, configPath)
 		}
-		paths = append(paths, configPath)
 	}
 
 	return paths, nil
@@ -332,7 +354,7 @@ func ReadConfigFile(appDir, env string) (configPath string, b []byte, err error)
 		_, err := os.Stat(configPath)
 		if err != nil {
 			if os.IsNotExist(err) {
-				// log.Debug().Str("config_path", configPath).Msg("Not found")
+				log.Debug().Str("config_path", configPath).Msg("Not found")
 				continue
 			} else {
 				return configPath, b, errors.WithStack(err)
@@ -379,7 +401,7 @@ func loadConf(appDir string, env string) (
 	// The config file must have a flat key value structure
 	fileType := filepath.Ext(configPath)
 	var UnmarshalErr error
-	if fileType == FileTypeEnv {
+	if fileType == FileTypeENV1 || fileType == FileTypeSH {
 		c.Map, UnmarshalErr = UnmarshalENV(b)
 	} else if fileType == FileTypeJSON {
 		UnmarshalErr = json.Unmarshal(b, &c.Map)
@@ -667,7 +689,8 @@ func refreshConfigByEnv(
 	fileType := filepath.Ext(configPaths[0])
 	var MarshalErr error
 	dotFormat := fmt.Sprintf(".%s", format)
-	if dotFormat == FileTypeEnv ||
+	if dotFormat == FileTypeENV1 ||
+		dotFormat == FileTypeSH ||
 		dotFormat == FileTypeJSON ||
 		dotFormat == FileTypeYAML {
 		//	Override config file format
@@ -677,7 +700,7 @@ func refreshConfigByEnv(
 			return configPaths, b, err
 		}
 	}
-	if fileType == FileTypeEnv {
+	if fileType == FileTypeENV1 || fileType == FileTypeSH {
 		b, MarshalErr = MarshalENV(conf)
 	} else if fileType == FileTypeJSON {
 		b, MarshalErr = json.MarshalIndent(conf.Map, "", "    ")
