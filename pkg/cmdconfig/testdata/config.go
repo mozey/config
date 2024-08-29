@@ -12,6 +12,10 @@ import (
 	"path/filepath"
 )
 
+// KeyPrefix is not made publicly available on this package,
+// users must use the getter or setter methods.
+// This package must not change the config file
+
 
 // APP_BAR
 var bar string
@@ -24,16 +28,9 @@ var templateFiz string
 // APP_DIR
 var dir string
 
-
-const KeyBar = "APP_BAR"
-const KeyBuz = "APP_BUZ"
-const KeyFoo = "APP_FOO"
-const KeyTemplateFiz = "APP_TEMPLATE_FIZ"
-const KeyDir = "APP_DIR"
-
 // Config fields correspond to config file keys less the prefix
 type Config struct {
-	
+
 	bar string // APP_BAR
 	buz string // APP_BUZ
 	foo string // APP_FOO
@@ -104,75 +101,75 @@ func New() *Config {
 
 // SetVars sets non-empty package vars on Config
 func SetVars(conf *Config) {
-	
+
 	if bar != "" {
 		conf.bar = bar
 	}
-	
+
 	if buz != "" {
 		conf.buz = buz
 	}
-	
+
 	if foo != "" {
 		conf.foo = foo
 	}
-	
+
 	if templateFiz != "" {
 		conf.templateFiz = templateFiz
 	}
-	
+
 	if dir != "" {
 		conf.dir = dir
 	}
-	
+
 }
 
 // SetEnv sets non-empty env vars on Config
 func SetEnv(conf *Config) {
 	var v string
 
-	
+
 	v = os.Getenv("APP_BAR")
 	if v != "" {
 		conf.bar = v
 	}
-	
+
 	v = os.Getenv("APP_BUZ")
 	if v != "" {
 		conf.buz = v
 	}
-	
+
 	v = os.Getenv("APP_FOO")
 	if v != "" {
 		conf.foo = v
 	}
-	
+
 	v = os.Getenv("APP_TEMPLATE_FIZ")
 	if v != "" {
 		conf.templateFiz = v
 	}
-	
+
 	v = os.Getenv("APP_DIR")
 	if v != "" {
 		conf.dir = v
 	}
-	
+
 }
 
 // GetMap of all env vars
 func (c *Config) GetMap() map[string]string {
 	m := make(map[string]string)
-	
+
 	m["APP_BAR"] = c.bar
-	
+
 	m["APP_BUZ"] = c.buz
-	
+
 	m["APP_FOO"] = c.foo
-	
+
 	m["APP_TEMPLATE_FIZ"] = c.templateFiz
-	
+
 	m["APP_DIR"] = c.dir
-	
+
 	return m
 }
 
