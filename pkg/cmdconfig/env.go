@@ -26,8 +26,15 @@ func UnmarshalENV(b []byte) (m map[string]string, err error) {
 		if !found {
 			return m, errors.Errorf("regexp error %s", line)
 		}
+
+		// Trim surrounding white space
 		key = strings.TrimSpace(key)
 		value = strings.TrimSpace(value)
+
+		// Remove surrounding, quotes inside the value is kept
+		value = strings.TrimPrefix(value, "\"")
+		value = strings.TrimSuffix(value, "\"")
+
 		m[key] = value
 	}
 
