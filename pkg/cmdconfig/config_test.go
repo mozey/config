@@ -103,7 +103,7 @@ func TestNewConfigENV(t *testing.T) {
 	configPath := filepath.Join(tmp, ".env")
 	err = os.WriteFile(
 		configPath,
-		[]byte("APP_FOO=foo\nAPP_BAR=bar\n"),
+		[]byte("APP_FOO=\"foo\"\nAPP_BAR=bar\n"),
 		perms)
 	is.NoErr(err)
 
