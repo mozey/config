@@ -12,7 +12,6 @@ import (
 	"strings"
 	"testing"
 	"text/template"
-	"time"
 
 	// NOTE TestGenerateHelper checks that the code in pkg/cmdconfig/testdata
 	// matches wat is actually generated. Therefore, this package can be
@@ -35,7 +34,6 @@ func init() {
 var letters = []rune("ABCDEFGHIJKLMNOPQRSTUVWXYZ")
 
 func randString(n int) string {
-	rand.Seed(time.Now().UnixNano())
 	b := make([]rune, n)
 	for i := range b {
 		b[i] = letters[rand.Intn(len(letters))]
