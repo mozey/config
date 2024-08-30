@@ -11,24 +11,25 @@ func TestUnmarshalENV(t *testing.T) {
 
 	envFileBytes := []byte(`
 	#!/bin/bash xyz
-	
+
 	Empty lines and lines not matching VAR=VAL are ignored
 	rm -rf /
-	
+
 	# This is a comment
-	
-	# quotes are included in the value
+
+	# surrounding quotes trimmed from the value
 	APP_FOO="foo"
-	
-	APP_TEMPLATE = my name is {{.Name}}
-	
+
+	# inner quotes are included in the value
+	APP_TEMPLATE = "my name is "{{.Name}}""
+
 	AWS_PROFILE=aws-local
 	`)
 
 	m, err := UnmarshalENV(envFileBytes)
 	is.NoErr(err)
-	is.Equal("\"foo\"", m["APP_FOO"])
-	is.Equal("my name is {{.Name}}", m["APP_TEMPLATE"])
+	is.Equal("foo", m["APP_FOO"])
+	is.Equal("my name is \"{{.Name}}\"", m["APP_TEMPLATE"])
 	is.Equal("aws-local", m["AWS_PROFILE"])
 }
 

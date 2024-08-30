@@ -101,15 +101,18 @@ func TestNewConfigENV(t *testing.T) {
 	configPath := filepath.Join(tmp, ".env")
 	err = os.WriteFile(
 		configPath,
-		[]byte("APP_FOO=\"foo\"\nAPP_BAR=bar\n"),
+		[]byte("APP_FOO=foo 123\nAPP_BAR=\"bar \"baz\"\"\n"),
 		perms)
 	is.NoErr(err)
 
 	_, config, err := newSingleConf(tmp, env)
 	is.NoErr(err)
 
-	is.Equal(config.Map["APP_FOO"], "foo")
-	is.Equal(config.Map["APP_BAR"], "bar")
+	// Double quotes around values with spaces is not required
+	is.Equal(config.Map["APP_FOO"], "foo 123")
+	// Double quotes are trimmed from both sides of the value,
+	// double quotes inside the value is kept
+	is.Equal(config.Map["APP_BAR"], "bar \"baz\"")
 
 	err = os.Remove(configPath)
 	is.NoErr(err)
