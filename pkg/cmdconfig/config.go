@@ -11,12 +11,11 @@ import (
 	"sort"
 	"strings"
 
+	"github.com/mozey/config/pkg/share"
 	"github.com/pkg/errors"
 	"github.com/rs/zerolog/log"
 	"gopkg.in/yaml.v2"
 )
-
-const EnvDev = "dev"
 
 // .............................................................................
 
@@ -243,7 +242,7 @@ func getEnvs(appDir string, samples listSamples) (envs []string, err error) {
 		matches := r.FindStringSubmatch(baseName)
 		if len(matches) == 2 {
 			env := matches[1]
-			samplePrefix := samplePrefix()
+			samplePrefix := share.SamplePrefix()
 			if strings.HasPrefix(baseName, samplePrefix) {
 				env = fmt.Sprintf("%s%s", samplePrefix, env)
 			}
@@ -253,101 +252,9 @@ func getEnvs(appDir string, samples listSamples) (envs []string, err error) {
 	return envs, nil
 }
 
-const Sample = "sample"
-
-func samplePrefix() string {
-	return fmt.Sprintf("%s.", Sample)
-}
-
-const FileTypeENV = ".env"   // e.g. .env
-const FileTypeSH = ".sh"     // e.g. .env.prod.sh
-const FileTypeJSON = ".json" // e.g. config.json
-const FileTypeYAML = ".yaml" // e.g. config.yaml
-
-// getConfigFilePath returns the path to a config file.
-// It can also be used to return paths to sample config file by prefixing env,
-// for example, to get the path to "sample.config.dev.json" pass env="sample.dev"
-func getConfigFilePath(appDir, env, fileType string) (string, error) {
-	if _, err := os.Stat(appDir); err != nil {
-		if os.IsNotExist(err) {
-			return "", errors.Errorf("app dir does not exist %v", appDir)
-		} else {
-			return "", errors.WithStack(err)
-		}
-	}
-
-	// Strip sample prefix from env
-	env = strings.TrimSpace(env)
-	sample := ""
-	samplePrefix := samplePrefix()
-	if strings.Contains(env, samplePrefix) {
-		sample = Sample
-		env = strings.Replace(env, samplePrefix, "", 1)
-	} else {
-		samplePrefix = ""
-	}
-
-	// Text editors usually do syntax highlighting for ".env" files
-	if fileType == FileTypeENV && sample == "" && env == "" {
-		return filepath.Join(appDir, ".env"), nil
-	}
-
-	// If env is not empty, add dot separator.
-	if env != "" {
-		env = fmt.Sprintf(".%s", env)
-	}
-
-	// For environements other than dev, or sample files,
-	// the filename must end with ".sh"
-	if fileType == FileTypeSH {
-		// E.g. .env.prod.sh or sample.env.prod.sh
-		fileNameFormat := "%v.env%v%v"
-		return filepath.Join(
-			appDir, fmt.Sprintf(fileNameFormat, sample, env, fileType)), nil
-	}
-
-	// E.g. config.dev.json or sample.config.dev.json
-	fileNameFormat := "%vconfig%v%v"
-	return filepath.Join(
-		appDir, fmt.Sprintf(fileNameFormat, samplePrefix, env, fileType)), nil
-}
-
-// getConfigFilePaths defines the load precedence
-func getConfigFilePaths(appDir, env string) (paths []string, err error) {
-	paths = []string{}
-
-	for _, fileType := range []string{
-		// Load precedence
-		FileTypeENV,
-		FileTypeSH,
-		FileTypeJSON,
-		FileTypeYAML,
-	} {
-		if fileType != FileTypeENV {
-			configPath, err := getConfigFilePath(appDir, env, fileType)
-			if err != nil {
-				return paths, err
-			}
-			paths = append(paths, configPath)
-		}
-
-		if env == EnvDev {
-			// For the dev config file, the env is optional, i.e.
-			// "config.dev.json" or "config.json" are both valid dev config files
-			configPath, err := getConfigFilePath(appDir, "", fileType)
-			if err != nil {
-				return paths, err
-			}
-			paths = append(paths, configPath)
-		}
-	}
-
-	return paths, nil
-}
-
 func ReadConfigFile(appDir, env string) (configPath string, b []byte, err error) {
 	found := false
-	paths, err := getConfigFilePaths(appDir, env)
+	paths, err := share.GetConfigFilePaths(appDir, env)
 	if err != nil {
 		return configPath, b, err
 	}
@@ -410,11 +317,11 @@ func loadConf(appDir string, env string) (
 	// The config file must have a flat key value structure
 	fileType := filepath.Ext(configPath)
 	var UnmarshalErr error
-	if fileType == FileTypeENV || fileType == FileTypeSH {
+	if fileType == share.FileTypeENV || fileType == share.FileTypeSH {
 		c.Map, UnmarshalErr = UnmarshalENV(b)
-	} else if fileType == FileTypeJSON {
+	} else if fileType == share.FileTypeJSON {
 		UnmarshalErr = json.Unmarshal(b, &c.Map)
-	} else if fileType == FileTypeYAML {
+	} else if fileType == share.FileTypeYAML {
 		UnmarshalErr = yaml.Unmarshal(b, &c.Map)
 	}
 	if UnmarshalErr != nil {
@@ -698,22 +605,22 @@ func refreshConfigByEnv(
 	fileType := filepath.Ext(configPaths[0])
 	var MarshalErr error
 	dotFormat := fmt.Sprintf(".%s", format)
-	if dotFormat == FileTypeENV ||
-		dotFormat == FileTypeSH ||
-		dotFormat == FileTypeJSON ||
-		dotFormat == FileTypeYAML {
+	if dotFormat == share.FileTypeENV ||
+		dotFormat == share.FileTypeSH ||
+		dotFormat == share.FileTypeJSON ||
+		dotFormat == share.FileTypeYAML {
 		//	Override config file format
 		fileType = dotFormat
-		configPaths[0], err = getConfigFilePath(appDir, env, dotFormat)
+		configPaths[0], err = share.GetConfigFilePath(appDir, env, dotFormat)
 		if err != nil {
 			return configPaths, b, err
 		}
 	}
-	if fileType == FileTypeENV || fileType == FileTypeSH {
+	if fileType == share.FileTypeENV || fileType == share.FileTypeSH {
 		b, MarshalErr = MarshalENV(conf)
-	} else if fileType == FileTypeJSON {
+	} else if fileType == share.FileTypeJSON {
 		b, MarshalErr = json.MarshalIndent(conf.Map, "", "    ")
-	} else if fileType == FileTypeYAML {
+	} else if fileType == share.FileTypeYAML {
 		b, MarshalErr = yaml.Marshal(conf.Map)
 	}
 	if MarshalErr != nil {
