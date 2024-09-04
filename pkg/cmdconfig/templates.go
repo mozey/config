@@ -47,9 +47,7 @@ package config
 import (
 	"encoding/base64"
 	"encoding/json"
-	"fmt"
 	"os"
-	"path/filepath"
 
 	"github.com/mozey/config/pkg/share"
 	"github.com/pkg/errors"
@@ -165,13 +163,13 @@ func LoadFile(env string) (conf *Config, err error) {
 		return conf, err
 	}
 	for _, filePath = range filePaths {
-		if _, err := os.Stat(appDir); err != nil {
+		_, err := os.Stat(filePath)
+		if err != nil {
 			if os.IsNotExist(err) {
 				// Path does not exist
 				continue
-			} else {
-				return conf, errors.WithStack(err)
 			}
+			return conf, errors.WithStack(err)
 		}
 		// Path exists
 		break

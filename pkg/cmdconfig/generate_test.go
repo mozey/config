@@ -7,6 +7,7 @@ import (
 	"testing"
 
 	config "github.com/mozey/config/pkg/cmdconfig/testdata"
+	"github.com/mozey/config/pkg/share"
 	"github.com/mozey/config/pkg/testutil"
 	"github.com/pkg/errors"
 )
@@ -28,7 +29,7 @@ func TestGenerateHelpersPrint(t *testing.T) {
 	in := &CmdIn{}
 	in.DryRun = true // Do not write files to disk
 	in.Prefix = "APP_"
-	in.Env = EnvDev
+	in.Env = share.EnvDev
 
 	// Path to generate config helpers is not used since dry run is set.
 	// Compare with TestGenerateHelpers
@@ -62,11 +63,11 @@ func TestGenerateHelpersPrint(t *testing.T) {
 		}
 	}
 
-	// We've checked the generated code match the files in pkg/cmdconfig/testdata,
+	// We've checked the generated code matches the files in pkg/cmdconfig/testdata,
 	// now check the generated code works as expected...
 	err = os.Setenv("APP_DIR", filepath.Join(appDir, in.Generate))
 	is.NoErr(err)
-	c, err := config.LoadFile(EnvDev)
+	c, err := config.LoadFile(share.EnvDev)
 	is.NoErr(err)
 	err = os.Setenv("APP_DIR", appDir)
 	is.NoErr(err)
@@ -90,7 +91,7 @@ func TestGenerateHelpersSave(t *testing.T) {
 	in.AppDir = tmp
 	in.DryRun = false // Test writing files to disk
 	in.Prefix = "APP_"
-	in.Env = EnvDev
+	in.Env = share.EnvDev
 
 	// Convention is to keep the helpers in YOUR_PROJECTS_APP_DIR/pkg/config
 	in.Generate = filepath.Join("pkg", "config")
@@ -98,9 +99,9 @@ func TestGenerateHelpersSave(t *testing.T) {
 	// Copy config file from testdata to tmp dir.
 	// See "Test fixtures in Go"
 	// https://dave.cheney.net/2016/05/10/test-fixtures-in-go
-	configFilePath, err := getConfigFilePath("testdata", in.Env, FileTypeJSON)
+	configFilePath, err := share.GetConfigFilePath("testdata", in.Env, share.FileTypeJSON)
 	is.NoErr(err)
-	dstConfigFilePath, err := getConfigFilePath(tmp, in.Env, FileTypeJSON)
+	dstConfigFilePath, err := share.GetConfigFilePath(tmp, in.Env, share.FileTypeJSON)
 	is.NoErr(err)
 	err = Copy(configFilePath, dstConfigFilePath)
 	is.NoErr(err)

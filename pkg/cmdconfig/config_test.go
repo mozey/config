@@ -17,6 +17,7 @@ import (
 	// matches wat is actually generated. Therefore, this package can be
 	// imported to test the generated code works as expected
 	config "github.com/mozey/config/pkg/cmdconfig/testdata"
+	"github.com/mozey/config/pkg/share"
 	"github.com/mozey/config/pkg/testutil"
 	"github.com/pkg/errors"
 	"github.com/rs/zerolog/log"
@@ -45,12 +46,12 @@ func TestGetPath(t *testing.T) {
 	is := testutil.Setup(t)
 
 	appDir := randString(8)
-	_, err := getConfigFilePath(appDir, "", FileTypeJSON)
+	_, err := share.GetConfigFilePath(appDir, "", share.FileTypeJSON)
 	is.True(err != nil) // Assumed path does not exist
 
 	appDir = "/"
 	env := "foo"
-	p, err := getConfigFilePath(appDir, env, FileTypeJSON)
+	p, err := share.GetConfigFilePath(appDir, env, share.FileTypeJSON)
 	is.NoErr(err)
 	is.Equal(filepath.Join(appDir, fmt.Sprintf("config.%v.json", env)), p)
 }
@@ -65,7 +66,7 @@ func TestFileTypes(t *testing.T) {
 	}
 	for _, configPath := range configPaths {
 		fileType := filepath.Ext(configPath)
-		is.True(FileTypeENV == fileType || FileTypeSH == fileType)
+		is.True(share.FileTypeENV == fileType || share.FileTypeSH == fileType)
 	}
 	configPaths = []string{
 		"config.json",
@@ -74,7 +75,7 @@ func TestFileTypes(t *testing.T) {
 	}
 	for _, configPath := range configPaths {
 		fileType := filepath.Ext(configPath)
-		is.Equal(FileTypeJSON, fileType)
+		is.Equal(share.FileTypeJSON, fileType)
 	}
 	configPaths = []string{
 		"config.yaml",
@@ -83,7 +84,7 @@ func TestFileTypes(t *testing.T) {
 	}
 	for _, configPath := range configPaths {
 		fileType := filepath.Ext(configPath)
-		is.Equal(FileTypeYAML, fileType)
+		is.Equal(share.FileTypeYAML, fileType)
 	}
 }
 
@@ -96,7 +97,7 @@ func TestNewConfigENV(t *testing.T) {
 		_ = os.RemoveAll(tmp)
 	})()
 
-	env := EnvDev
+	env := share.EnvDev
 
 	configPath := filepath.Join(tmp, ".env")
 	err = os.WriteFile(
@@ -127,7 +128,7 @@ func TestNewConfigJSON(t *testing.T) {
 		_ = os.RemoveAll(tmp)
 	})()
 
-	env := EnvDev
+	env := share.EnvDev
 
 	configPath := filepath.Join(tmp, "config.json")
 	err = os.WriteFile(
@@ -155,7 +156,7 @@ func TestNewConfigYAML(t *testing.T) {
 		_ = os.RemoveAll(tmp)
 	})()
 
-	env := EnvDev
+	env := share.EnvDev
 
 	configPath := filepath.Join(tmp, "config.yaml")
 	err = os.WriteFile(
@@ -183,7 +184,7 @@ func TestNewExtendedConf(t *testing.T) {
 		_ = os.RemoveAll(tmp)
 	})()
 
-	env := EnvDev
+	env := share.EnvDev
 
 	prefix := "APP_"
 	key0 := fmt.Sprintf("%sMAIN", prefix)
@@ -298,7 +299,7 @@ func TestNewMergedConf(t *testing.T) {
 		_ = os.RemoveAll(tmp)
 	})()
 
-	env := EnvDev
+	env := share.EnvDev
 
 	key0 := "APP_MAIN"
 	key1 := "APP_EXT1"
@@ -363,7 +364,7 @@ func TestCompareKeys(t *testing.T) {
 		_ = os.RemoveAll(tmp)
 	})()
 
-	env := EnvDev
+	env := share.EnvDev
 	compare := EnvProd
 
 	err = os.WriteFile(
@@ -399,7 +400,7 @@ func TestUpdateConfigSingleJSON(t *testing.T) {
 		_ = os.RemoveAll(tmp)
 	})()
 
-	env := EnvDev
+	env := share.EnvDev
 
 	err = os.WriteFile(
 		filepath.Join(tmp, fmt.Sprintf("config.%v.json", env)),
@@ -442,7 +443,7 @@ func TestUpdateConfigMulti(t *testing.T) {
 	// Create config files...
 	test0 := "xxx"
 
-	env := EnvDev
+	env := share.EnvDev
 	// Non-sample
 	err = os.WriteFile(
 		filepath.Join(tmp, fmt.Sprintf("config.%v.json", env)),
@@ -492,7 +493,7 @@ func TestUpdateConfigMulti(t *testing.T) {
 	in = &CmdIn{}
 	in.AppDir = tmp
 	in.Prefix = "APP_"
-	in.Env = EnvDev
+	in.Env = share.EnvDev
 	in.Keys = ArgMap{"APP_FOO"}
 	in.Values = ArgMap{test1}
 	out, err = Cmd(in)
@@ -602,7 +603,7 @@ func TestSetEnv(t *testing.T) {
 		_ = os.RemoveAll(tmp)
 	})()
 
-	env := EnvDev
+	env := share.EnvDev
 
 	err = os.WriteFile(
 		filepath.Join(tmp, fmt.Sprintf("config.%v.json", env)),
@@ -643,7 +644,7 @@ func TestCSV(t *testing.T) {
 		_ = os.RemoveAll(tmp)
 	})()
 
-	env := EnvDev
+	env := share.EnvDev
 
 	err = os.WriteFile(
 		filepath.Join(tmp, fmt.Sprintf("config.%v.json", env)),
@@ -681,7 +682,7 @@ func TestBase64(t *testing.T) {
 		_ = os.RemoveAll(tmp)
 	})()
 
-	env := EnvDev
+	env := share.EnvDev
 
 	err = os.WriteFile(
 		filepath.Join(tmp, fmt.Sprintf("config.%v.json", env)),
@@ -717,7 +718,7 @@ func TestGet(t *testing.T) {
 		_ = os.RemoveAll(tmp)
 	})()
 
-	env := EnvDev
+	env := share.EnvDev
 
 	err = os.WriteFile(
 		filepath.Join(tmp, fmt.Sprintf("config.%v.json", env)),
@@ -887,7 +888,7 @@ func TestGetEnvs(t *testing.T) {
 
 	envs, err := getEnvs(tmp, false)
 	is.NoErr(err)
-	is.Equal([]string{EnvDev, EnvProd, "stage-ec2"}, envs)
+	is.Equal([]string{share.EnvDev, EnvProd, "stage-ec2"}, envs)
 
 	envs, err = getEnvs(tmp, true)
 	is.NoErr(err)
