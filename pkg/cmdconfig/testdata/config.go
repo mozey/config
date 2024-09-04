@@ -1,4 +1,3 @@
-
 // Code generated with https://github.com/mozey/config DO NOT EDIT
 
 package config
@@ -6,16 +5,15 @@ package config
 import (
 	"encoding/base64"
 	"encoding/json"
-	"fmt"
-	"github.com/pkg/errors"
 	"os"
-	"path/filepath"
+
+	"github.com/mozey/config/pkg/share"
+	"github.com/pkg/errors"
 )
 
 // KeyPrefix is not made publicly available on this package,
 // users must use the getter or setter methods.
 // This package must not change the config file
-
 
 // APP_BAR
 var bar string
@@ -198,17 +196,46 @@ func SetEnvBase64(configBase64 string) (err error) {
 }
 
 // LoadFile sets the env from file and returns a new instance of Config
-func LoadFile(mode string) (conf *Config, err error) {
+func LoadFile(env string) (conf *Config, err error) {
 	appDir := os.Getenv("APP_DIR")
-	p := filepath.Join(appDir, fmt.Sprintf("config.%v.json", mode))
-	b, err := os.ReadFile(p)
-	if err != nil {
-		return nil, err
+	if appDir == "" {
+		// Use current working dir
+		appDir, err = os.Getwd()
+		if err != nil {
+			return conf, errors.WithStack(err)
+		}
 	}
+
+	var filePath string
+	filePaths, err := share.GetConfigFilePaths(appDir, env)
+	if err != nil {
+		return conf, err
+	}
+	for _, filePath = range filePaths {
+		_, err := os.Stat(filePath)
+		if err != nil {
+			if os.IsNotExist(err) {
+				// Path does not exist
+				continue
+			}
+			return conf, errors.WithStack(err)
+		}
+		// Path exists
+		break
+	}
+	if filePath == "" {
+		return conf, errors.Errorf("config file not found in %s", appDir)
+	}
+
+	b, err := os.ReadFile(filePath)
+	if err != nil {
+		return conf, errors.WithStack(err)
+	}
+
 	configMap := make(map[string]string)
 	err = json.Unmarshal(b, &configMap)
 	if err != nil {
-		return nil, err
+		return conf, errors.WithStack(err)
 	}
 	for key, val := range configMap {
 		_ = os.Setenv(key, val)

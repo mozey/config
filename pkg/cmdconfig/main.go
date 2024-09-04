@@ -5,6 +5,7 @@ import (
 	"os"
 	"strings"
 
+	"github.com/mozey/config/pkg/share"
 	"github.com/rs/zerolog/log"
 )
 
@@ -50,7 +51,7 @@ func ParseFlags(version string) *CmdIn {
 	flag.StringVar(&in.Prefix,
 		FlagPrefix, "APP_", "Config key prefix")
 	flag.StringVar(&in.Env,
-		FlagEnv, EnvDev,
+		FlagEnv, share.EnvDev,
 		"Config file to use, also supports wildcards \"*\" and \"sample.*\"")
 	flag.BoolVar(&in.All,
 		FlagAll, false, "Apply to all config files and samples")
