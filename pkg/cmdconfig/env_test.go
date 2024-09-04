@@ -3,6 +3,7 @@ package cmdconfig
 import (
 	"testing"
 
+	"github.com/mozey/config/pkg/share"
 	"github.com/mozey/config/pkg/testutil"
 )
 
@@ -26,7 +27,7 @@ func TestUnmarshalENV(t *testing.T) {
 	AWS_PROFILE=aws-local
 	`)
 
-	m, err := UnmarshalENV(envFileBytes)
+	m, err := share.UnmarshalENV(envFileBytes)
 	is.NoErr(err)
 	is.Equal("foo", m["APP_FOO"])
 	is.Equal("my name is \"{{.Name}}\"", m["APP_TEMPLATE"])

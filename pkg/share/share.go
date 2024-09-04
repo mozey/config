@@ -1,12 +1,15 @@
 package share
 
 import (
+	"encoding/json"
 	"fmt"
 	"os"
 	"path/filepath"
+	"regexp"
 	"strings"
 
 	"github.com/pkg/errors"
+	"gopkg.in/yaml.v2"
 )
 
 const EnvDev = "dev"
@@ -104,4 +107,56 @@ func GetConfigFilePaths(appDir, env string) (paths []string, err error) {
 	}
 
 	return paths, nil
+}
+
+// UnmarshalENV .env file bytes to key value map.
+// Syntax rules as per this comment
+// https://github.com/mozey/config/issues/24#issue-1091975787
+func UnmarshalENV(b []byte) (m map[string]string, err error) {
+	m = make(map[string]string)
+
+	// Using multi-line mode regex
+	// https://stackoverflow.com/a/62996933/639133
+	expr := "(?m)^\\s*([_a-zA-Z0-9]+)\\s*=\\s*(.+)\\s*$"
+	r, _ := regexp.Compile(expr)
+	lines := r.FindAllString(string(b), -1)
+
+	for _, line := range lines {
+		key, value, found := strings.Cut(line, "=")
+		if !found {
+			return m, errors.Errorf("regexp error %s", line)
+		}
+
+		// Trim surrounding white space
+		key = strings.TrimSpace(key)
+		value = strings.TrimSpace(value)
+
+		// Remove surrounding, quotes inside the value is kept
+		value = strings.TrimPrefix(value, "\"")
+		value = strings.TrimSuffix(value, "\"")
+
+		m[key] = value
+	}
+
+	return m, nil
+}
+
+func UnmarshalConfig(configPath string, b []byte) (
+	configMap map[string]string, err error) {
+
+	// Unmarshal config.
+	// The config file must have a flat key value structure
+	fileType := filepath.Ext(configPath)
+	if fileType == FileTypeENV || fileType == FileTypeSH {
+		configMap, err = UnmarshalENV(b)
+	} else if fileType == FileTypeJSON {
+		err = json.Unmarshal(b, &configMap)
+	} else if fileType == FileTypeYAML {
+		err = yaml.Unmarshal(b, &configMap)
+	}
+	if err != nil {
+		return configMap, errors.WithStack(err)
+	}
+
+	return configMap, nil
 }

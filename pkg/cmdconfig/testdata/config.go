@@ -1,3 +1,4 @@
+
 // Code generated with https://github.com/mozey/config DO NOT EDIT
 
 package config
@@ -15,6 +16,7 @@ import (
 // users must use the getter or setter methods.
 // This package must not change the config file
 
+
 // APP_BAR
 var bar string
 // APP_BUZ
@@ -28,7 +30,7 @@ var dir string
 
 // Config fields correspond to config file keys less the prefix
 type Config struct {
-
+	
 	bar string // APP_BAR
 	buz string // APP_BUZ
 	foo string // APP_FOO
@@ -99,75 +101,75 @@ func New() *Config {
 
 // SetVars sets non-empty package vars on Config
 func SetVars(conf *Config) {
-
+	
 	if bar != "" {
 		conf.bar = bar
 	}
-
+	
 	if buz != "" {
 		conf.buz = buz
 	}
-
+	
 	if foo != "" {
 		conf.foo = foo
 	}
-
+	
 	if templateFiz != "" {
 		conf.templateFiz = templateFiz
 	}
-
+	
 	if dir != "" {
 		conf.dir = dir
 	}
-
+	
 }
 
 // SetEnv sets non-empty env vars on Config
 func SetEnv(conf *Config) {
 	var v string
 
-
+	
 	v = os.Getenv("APP_BAR")
 	if v != "" {
 		conf.bar = v
 	}
-
+	
 	v = os.Getenv("APP_BUZ")
 	if v != "" {
 		conf.buz = v
 	}
-
+	
 	v = os.Getenv("APP_FOO")
 	if v != "" {
 		conf.foo = v
 	}
-
+	
 	v = os.Getenv("APP_TEMPLATE_FIZ")
 	if v != "" {
 		conf.templateFiz = v
 	}
-
+	
 	v = os.Getenv("APP_DIR")
 	if v != "" {
 		conf.dir = v
 	}
-
+	
 }
 
 // GetMap of all env vars
 func (c *Config) GetMap() map[string]string {
 	m := make(map[string]string)
-
+	
 	m["APP_BAR"] = c.bar
-
+	
 	m["APP_BUZ"] = c.buz
-
+	
 	m["APP_FOO"] = c.foo
-
+	
 	m["APP_TEMPLATE_FIZ"] = c.templateFiz
-
+	
 	m["APP_DIR"] = c.dir
-
+	
 	return m
 }
 
@@ -206,13 +208,13 @@ func LoadFile(env string) (conf *Config, err error) {
 		}
 	}
 
-	var filePath string
+	var configPath string
 	filePaths, err := share.GetConfigFilePaths(appDir, env)
 	if err != nil {
 		return conf, err
 	}
-	for _, filePath = range filePaths {
-		_, err := os.Stat(filePath)
+	for _, configPath = range filePaths {
+		_, err := os.Stat(configPath)
 		if err != nil {
 			if os.IsNotExist(err) {
 				// Path does not exist
@@ -223,19 +225,18 @@ func LoadFile(env string) (conf *Config, err error) {
 		// Path exists
 		break
 	}
-	if filePath == "" {
+	if configPath == "" {
 		return conf, errors.Errorf("config file not found in %s", appDir)
 	}
 
-	b, err := os.ReadFile(filePath)
+	b, err := os.ReadFile(configPath)
 	if err != nil {
 		return conf, errors.WithStack(err)
 	}
 
-	configMap := make(map[string]string)
-	err = json.Unmarshal(b, &configMap)
+	configMap, err := share.UnmarshalConfig(configPath, b)
 	if err != nil {
-		return conf, errors.WithStack(err)
+		return conf, err
 	}
 	for key, val := range configMap {
 		_ = os.Setenv(key, val)

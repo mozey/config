@@ -157,13 +157,13 @@ func LoadFile(env string) (conf *Config, err error) {
 		}
 	}
 
-	var filePath string
+	var configPath string
 	filePaths, err := share.GetConfigFilePaths(appDir, env)
 	if err != nil {
 		return conf, err
 	}
-	for _, filePath = range filePaths {
-		_, err := os.Stat(filePath)
+	for _, configPath = range filePaths {
+		_, err := os.Stat(configPath)
 		if err != nil {
 			if os.IsNotExist(err) {
 				// Path does not exist
@@ -174,19 +174,18 @@ func LoadFile(env string) (conf *Config, err error) {
 		// Path exists
 		break
 	}
-	if filePath == "" {
+	if configPath == "" {
 		return conf, errors.Errorf("config file not found in %s", appDir)
 	}
 
-	b, err := os.ReadFile(filePath)
+	b, err := os.ReadFile(configPath)
 	if err != nil {
 		return conf, errors.WithStack(err)
 	}
 
-	configMap := make(map[string]string)
-	err = json.Unmarshal(b, &configMap)
+	configMap, err := share.UnmarshalConfig(configPath, b)
 	if err != nil {
-		return conf, errors.WithStack(err)
+		return conf, err
 	}
 	for key, val := range configMap {
 		_ = os.Setenv(key, val)

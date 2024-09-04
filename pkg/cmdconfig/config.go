@@ -318,22 +318,13 @@ func loadConf(appDir string, env string) (
 		return configPath, c, err
 	}
 
-	// Unmarshal config.
-	// The config file must have a flat key value structure
-	fileType := filepath.Ext(configPath)
-	var UnmarshalErr error
-	if fileType == share.FileTypeENV || fileType == share.FileTypeSH {
-		c.Map, UnmarshalErr = UnmarshalENV(b)
-	} else if fileType == share.FileTypeJSON {
-		UnmarshalErr = json.Unmarshal(b, &c.Map)
-	} else if fileType == share.FileTypeYAML {
-		UnmarshalErr = yaml.Unmarshal(b, &c.Map)
-	}
-	if UnmarshalErr != nil {
+	configMap, err := share.UnmarshalConfig(configPath, b)
+	if err != nil {
 		log.Info().Str("config_path", configPath).Msg("")
-		return configPath, c, errors.WithStack(UnmarshalErr)
+		return configPath, c, err
 	}
 
+	c.Map = configMap
 	c.refreshKeys()
 
 	return configPath, c, nil
