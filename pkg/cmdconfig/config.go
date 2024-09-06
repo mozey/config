@@ -138,12 +138,10 @@ func (in *CmdIn) Valid() error {
 	appDirKey := fmt.Sprintf("%sDIR", in.Prefix)
 	appDir := os.Getenv(appDirKey)
 	if appDir == "" {
-		// Default APP_DIR is current working dir
-		var err error
-		appDir, err = os.Getwd()
-		if err != nil {
-			return errors.Errorf("%v env not set%s", appDirKey, "\n")
-		}
+		// Don't set default APP_DIR, the user must explicitely set it.
+		// Default value could cause unexpected behavior with generated code,
+		// or make issues with features like base64 config hard to debug
+		return errors.Errorf("%v env not set\n", appDirKey)
 	}
 	in.AppDir = appDir
 
