@@ -192,6 +192,8 @@ func LoadFile(env string) (conf *Config, err error) {
 	}
 	return New(), nil
 }
+
+// LoadMap sets the env from a map and returns a new instance of Config
 `
 
 // templateTemplateGo text template to generate FileNameTemplateGo
