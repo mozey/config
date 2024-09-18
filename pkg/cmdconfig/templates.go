@@ -122,6 +122,14 @@ func (c *Config) GetMap() map[string]string {
 	return m
 }
 
+// LoadMap sets the env from a map and returns a new instance of Config
+func LoadMap(configMap map[string]string) conf *Config  {
+	for key, val := range configMap {
+		_ = os.Setenv(key, val)
+	}
+	return New(), nil
+}
+
 // SetEnvBase64 decodes and sets env from the given base64 string
 func SetEnvBase64(configBase64 string) (err error) {
 	// Decode base64
@@ -192,8 +200,6 @@ func LoadFile(env string) (conf *Config, err error) {
 	}
 	return New(), nil
 }
-
-// LoadMap sets the env from a map and returns a new instance of Config
 `
 
 // templateTemplateGo text template to generate FileNameTemplateGo
