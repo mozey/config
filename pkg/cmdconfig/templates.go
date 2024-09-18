@@ -123,11 +123,11 @@ func (c *Config) GetMap() map[string]string {
 }
 
 // LoadMap sets the env from a map and returns a new instance of Config
-func LoadMap(configMap map[string]string) conf *Config  {
+func LoadMap(configMap map[string]string) (conf *Config)  {
 	for key, val := range configMap {
 		_ = os.Setenv(key, val)
 	}
-	return New(), nil
+	return New()
 }
 
 // SetEnvBase64 decodes and sets env from the given base64 string
