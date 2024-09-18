@@ -894,3 +894,14 @@ func TestGetEnvs(t *testing.T) {
 	is.NoErr(err)
 	is.Equal([]string{"sample.dev", "sample.prod", "sample.stage-ec2"}, envs)
 }
+
+func TestLoadMap(t *testing.T) {
+	is := testutil.Setup(t)
+
+	key := "APP_BAR"
+	os.Setenv(key, "xxx")
+
+	conf := config.LoadMap(map[string]string{key: t.Name()})
+	is.Equal(conf.Bar(), t.Name())
+	is.Equal(os.Getenv(key), t.Name())
+}
