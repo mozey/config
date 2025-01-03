@@ -115,11 +115,16 @@ func GetConfigFilePaths(appDir, env string) (paths []string, err error) {
 func UnmarshalENV(b []byte) (m map[string]string, err error) {
 	m = make(map[string]string)
 
-	// Using multi-line mode regex
+	// Using multi-line mode regex,
+	// but not matching \n as any character,
+	// value must be on a single line
 	// https://stackoverflow.com/a/62996933/639133
-	expr := "(?m)^\\s*([_a-zA-Z0-9]+)\\s*=\\s*(.+)\\s*$"
-	r, _ := regexp.Compile(expr)
-	lines := r.FindAllString(string(b), -1)
+	expr := "(?m)^\\s*([(?:\bexport\\s*\b)?_a-zA-Z0-9]+)\\s*=\\s*(.+)\\s*$"
+	keyValuePairs := regexp.MustCompile(expr)
+	expr = "\\s*export\\s*"
+	exportPrefix := regexp.MustCompile(expr)
+
+	lines := keyValuePairs.FindAllString(string(b), -1)
 
 	for _, line := range lines {
 		key, value, found := strings.Cut(line, "=")
@@ -127,11 +132,15 @@ func UnmarshalENV(b []byte) (m map[string]string, err error) {
 			return m, errors.Errorf("regexp error %s", line)
 		}
 
+		// Remove "export" prefix from key
+		key = exportPrefix.ReplaceAllString(key, "")
+
 		// Trim surrounding white space
 		key = strings.TrimSpace(key)
 		value = strings.TrimSpace(value)
 
-		// Remove surrounding, quotes inside the value is kept
+		// Remove surrounding quotes,
+		// quotes inside the value is kept
 		value = strings.TrimPrefix(value, "\"")
 		value = strings.TrimSuffix(value, "\"")
 

@@ -19,10 +19,12 @@ func TestUnmarshalENV(t *testing.T) {
 	# This is a comment
 
 	# surrounding quotes trimmed from the value
-	APP_FOO="foo"
+	APP_FOO="foo
+	value must be on a single line"
 
 	# inner quotes are included in the value
-	APP_TEMPLATE = "my name is "{{.Name}}""
+	export APP_TEMPLATE = 
+	"my name is "{{.Name}}""
 
 	AWS_PROFILE=aws-local
 	`)
@@ -49,9 +51,9 @@ func TestMarshalENV(t *testing.T) {
 
 	// TODO Preserve comments
 	// https://github.com/mozey/config/issues/34
-	envFileBytes := []byte(`APP_FOO="foo"
-APP_TEMPLATE=my name is {{.Name}}
-AWS_PROFILE=aws-local
+	envFileBytes := []byte(`export APP_FOO="foo"
+export APP_TEMPLATE=my name is {{.Name}}
+export AWS_PROFILE=aws-local
 `)
 
 	is.Equal(string(envFileBytes), string(b))
