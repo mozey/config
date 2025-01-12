@@ -14,7 +14,7 @@ func MarshalENV(c *conf) (b []byte, err error) {
 		if !ok {
 			return b, ErrMissingKey(key)
 		}
-		_, err = buf.WriteString(fmt.Sprintf("%s=%s\n", key, value))
+		_, err = buf.WriteString(fmt.Sprintf("export %s=%s\n", key, value))
 		if err != nil {
 			return b, err
 		}
