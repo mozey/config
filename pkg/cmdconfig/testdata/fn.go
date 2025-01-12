@@ -19,6 +19,7 @@ type Fn struct {
 // .............................................................................
 // Methods to set function input
 
+
 // FnBar sets the function input to the value of APP_BAR
 func (c *Config) FnBar() *Fn {
 	fn := Fn{}
@@ -58,6 +59,7 @@ func (c *Config) FnDir() *Fn {
 	fn.output = ""
 	return &fn
 }
+
 
 // .............................................................................
 // Type conversion functions

@@ -229,8 +229,11 @@ Compare generated files in `pkg/cmdconfig/testdata` to `pkg/cmdconfig/testdata/c
 
 Update testdata if required (after adding new features)
 ```bash
+rm .env
+cp ./sample.config.dev.json ./config.dev.json
+conf
 configu -generate pkg/config
-cp pkg/config/config.go pkg/cmdconfig/testdata/config.go
+cp pkg/config/*.go pkg/cmdconfig/testdata
 cp sample.config.dev.json pkg/cmdconfig/testdata/config.dev.json
 ```
 
