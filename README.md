@@ -1,6 +1,8 @@
 # [mozey/config](https://github.com/mozey/config)
 
-Manage env vars with a flat key/value file. See [architecture notes](https://github.com/mozey/config#architecture-notes) for more info.
+Loads environment variables from .env for Go projects<sup>[[Kind-of like dotenv](https://github.com/motdotla/dotenv)]</sup>
+
+See [architecture notes](https://github.com/mozey/config#architecture-notes) for more info.
 
 By default `${ENV} == "dev"`, and your config file may be named **.env**. 
 
